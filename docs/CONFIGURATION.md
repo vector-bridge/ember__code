@@ -62,7 +62,7 @@ When an agent references `model: <name>`:
 Sign up at **https://ignite-ember.sh** and get an API key. All built-in models route through the Ember hosted endpoint. Free tier available.
 
 ```bash
-ignite-ember login          # interactive login
+ignite-ember /login         # interactive login
 # or
 export EMBER_API_KEY=ek_...
 ```

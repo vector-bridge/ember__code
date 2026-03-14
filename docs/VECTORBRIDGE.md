@@ -105,11 +105,11 @@ Summaries are built **bottom-up**. Children are analyzed first, then their summa
 │  Project: my-api                                            │
 │  Summary: "FastAPI REST API with JWT auth, PostgreSQL,      │
 │           and Redis caching. 47 endpoints across 8 modules" │
-│                                                              │
+│                                                             │
 │  Security: "3 critical findings: SQL injection in search,   │
-│            missing rate limiting on auth, exposed debug      │
-│            endpoints in production config"                   │
-│                                                              │
+│            missing rate limiting on auth, exposed debug     │
+│            endpoints in production config"                  │
+│                                                             │
 │  ┌───────────────────────────┐  ┌─────────────────────────┐ │
 │  │  Module: src/auth/        │  │  Module: src/api/       │ │
 │  │  Summary: "Authentication │  │  Summary: "REST API     │ │
@@ -120,9 +120,9 @@ Summaries are built **bottom-up**. Children are analyzed first, then their summa
 │  │  ┌─────────────────────┐  │  │                         │ │
 │  │  │ File: middleware.py │  │  │  ...                    │ │
 │  │  │ Summary: "Request   │  │  └─────────────────────────┘ │
-│  │  │ auth middleware.     │  │                              │
-│  │  │ Validates JWT from   │  │                              │
-│  │  │ Authorization header"│  │                              │
+│  │  │ auth middleware.    │  │                              │
+│  │  │ Validates JWT from  │  │                              │
+│  │  │ Authorization header│  │                              │
 │  │  │                     │  │                              │
 │  │  │ ┌─────────────────┐ │  │                              │
 │  │  │ │ Class:          │ │  │                              │

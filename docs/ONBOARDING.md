@@ -10,7 +10,7 @@ First Run Detected
     ▼
 ┌─────────────────────────────────┐
 │  1. Create default agents       │  ← write built-in .md files
-│     in .ember/agents/      │     to the project
+│     in .ember/agents/           │     to the project
 └──────────┬──────────────────────┘
            │
            ▼
@@ -57,9 +57,14 @@ On first run, Ember Code copies the built-in agent `.md` files into `.ember/agen
 .ember/
 └── agents/
     ├── explorer.md
+    ├── architect.md
     ├── planner.md
     ├── editor.md
+    ├── simplifier.md
     ├── reviewer.md
+    ├── security.md
+    ├── qa.md
+    ├── debugger.md
     ├── git.md
     └── conversational.md
 ```
@@ -80,13 +85,18 @@ Ember Code introduces itself and explains the agent system:
 ```
  ◆ Ember Code — ignited and ready.
 
-I've sparked 6 agents in .ember/agents/:
+I've sparked 11 agents in .ember/agents/:
 
-  explorer.md      searches and reads your codebase
-  planner.md       designs implementation plans
-  editor.md        creates and modifies files
-  reviewer.md      reviews code for quality
-  git.md           handles version control
+  explorer.md        searches and reads your codebase
+  architect.md       designs component architecture
+  planner.md         designs implementation plans
+  editor.md          creates and modifies files
+  simplifier.md      post-edit code polish
+  reviewer.md        reviews code for quality
+  security.md        vulnerability analysis
+  qa.md              test generation and review
+  debugger.md        bug diagnosis and root cause analysis
+  git.md             handles version control
   conversational.md  answers questions
 
 These are Markdown files — open them, read them, change them.

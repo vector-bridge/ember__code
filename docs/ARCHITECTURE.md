@@ -6,56 +6,56 @@ Ember Code is a terminal-based AI coding assistant built on [Agno](https://docs.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    Terminal UI                        │
-│              (Rich / Textual CLI)                     │
+│                    Terminal UI                      │
+│              (Rich / Textual CLI)                   │
 ├─────────────────────────────────────────────────────┤
-│                  Session Manager                     │
-│        (conversation state, history, memory)         │
+│                  Session Manager                    │
+│        (conversation state, history, memory)        │
 ├─────────────────────────────────────────────────────┤
-│                                                      │
-│              ┌──────────────────┐                    │
-│              │   Orchestrator   │ ← entry point      │
-│              │  (meta-agent)    │                     │
-│              └────────┬─────────┘                    │
-│                       │ analyzes task,               │
-│                       │ picks agents + mode           │
-│                       ▼                              │
-│              ┌──────────────────┐                    │
-│              │   Agent Pool     │                    │
-│              │                  │                    │
-│              │  ┌─────────┐    │                    │
-│              │  │.md files│    │  ← user-extensible │
-│              │  └─────────┘    │                    │
-│              └────────┬─────────┘                    │
-│                       │                              │
-│                       ▼                              │
-│              ┌──────────────────┐                    │
-│              │  Dynamic Team    │                    │
-│              │  (route/coord/   │                    │
-│              │   broadcast/     │                    │
-│              │   tasks)         │                    │
-│              │       │          │                    │
-│              │       ▼          │                    │
-│              │  Agents can      │                    │
-│              │  spawn sub-teams │ ← unlimited depth  │
-│              │  from the pool   │                    │
-│              └──────────────────┘                    │
-│                                                      │
+│                                                     │
+│              ┌──────────────────┐                   │
+│              │   Orchestrator   │ ← entry point     │
+│              │  (meta-agent)    │                   │
+│              └────────┬─────────┘                   │
+│                       │ analyzes task,              │
+│                       │ picks agents + mode         │
+│                       ▼                             │
+│              ┌──────────────────┐                   │
+│              │   Agent Pool     │                   │
+│              │                  │                   │
+│              │  ┌─────────┐     │                   │
+│              │  │.md files│     │  ← user-extensible│
+│              │  └─────────┘     │                   │
+│              └────────┬─────────┘                   │
+│                       │                             │
+│                       ▼                             │
+│              ┌──────────────────┐                   │
+│              │  Dynamic Team    │                   │
+│              │  (route/coord/   │                   │
+│              │   broadcast/     │                   │
+│              │   tasks)         │                   │
+│              │       │          │                   │
+│              │       ▼          │                   │
+│              │  Agents can      │                   │
+│              │  spawn sub-teams │ ← unlimited depth │
+│              │  from the pool   │                   │
+│              └──────────────────┘                   │
+│                                                     │
 ├─────────────────────────────────────────────────────┤
-│              Guardrails Layer                        │
+│              Guardrails Layer                       │
 │   PII Detection │ Prompt Injection │ Moderation     │
 ├─────────────────────────────────────────────────────┤
-│              Tool Layer (Agno Toolkits)              │
+│              Tool Layer (Agno Toolkits)             │
 │   Shell │ File │ Edit │ Search │ Git │ Web │ Python │
 ├─────────────────────────────────────────────────────┤
-│              Knowledge Layer                         │
+│              Knowledge Layer                        │
 │   ChromaDB vector store │ EmberEmbedder (384-dim)   │
 ├─────────────────────────────────────────────────────┤
-│              MCP Layer                               │
+│              MCP Layer                              │
 │   Server (expose tools to IDEs via stdio)           │
 │   Client (consume external MCP servers via Agno)    │
 ├─────────────────────────────────────────────────────┤
-│              Storage Layer                           │
+│              Storage Layer                          │
 │      SQLite (sessions) │ Memory (user prefs)        │
 └─────────────────────────────────────────────────────┘
 ```

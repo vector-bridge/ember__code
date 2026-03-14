@@ -12,15 +12,17 @@ Ember Code takes a **definition-driven, dynamic** approach to agents. There are 
 User Message
     │
     ▼
-┌──────────────┐       ┌──────────────────────────────┐
+┌──────────────┐       ┌───────────────────────────────┐
 │ Orchestrator │──────▶│        Agent Pool             │
 │              │       │                               │
-│ • Analyzes   │       │  explorer.md    editor.md     │
-│   the task   │       │  planner.md     reviewer.md   │
-│ • Selects    │       │  git.md         conversational.md │
-│   agents     │       │  your-custom-agent.md         │
-│ • Picks team │       │  another-agent.md             │
-│   mode       │       └──────────────────────────────┘
+│ • Analyzes   │       │  explorer.md    architect.md  │
+│   the task   │       │  planner.md     editor.md     │
+│ • Selects    │       │  simplifier.md  reviewer.md   │
+│   agents     │       │  security.md    qa.md         │
+│ • Picks team │       │  debugger.md    git.md        │
+│   mode       │       │  conversational.md            │
+│              │       │  your-custom-agent.md         │
+│              │       └───────────────────────────────┘
 │              │
 │              │──────▶ Assembles Team dynamically
 │              │        (mode: coordinate | route | tasks | broadcast)
@@ -183,6 +185,14 @@ model: MiniMax-M2.5
 tags: [search, read-only, exploration]
 ```
 
+**architect.md** — Designs component architecture, data flows, and interfaces.
+```yaml
+tools: Glob, Grep, LS, Read, WebSearch
+model: MiniMax-M2.5
+reasoning: true
+tags: [architecture, design, read-only]
+```
+
 **planner.md** — Analyzes tasks, produces structured implementation plans.
 ```yaml
 tools: Glob, Grep, LS, Read, WebSearch
@@ -198,6 +208,13 @@ model: MiniMax-M2.5
 tags: [coding, editing, file-write]
 ```
 
+**simplifier.md** — Post-edit code polish, dead code removal, complexity reduction.
+```yaml
+tools: Read, Edit, Glob, Grep, Bash
+model: MiniMax-M2.5
+tags: [quality, refactoring, simplification]
+```
+
 **reviewer.md** — Reviews code for bugs, security issues, and style compliance.
 ```yaml
 tools: Glob, Grep, LS, Read, WebFetch, WebSearch
@@ -205,6 +222,29 @@ model: MiniMax-M2.5
 color: red
 reasoning: true
 tags: [review, quality, read-only]
+```
+
+**security.md** — Vulnerability analysis, OWASP Top 10, auth and input validation review.
+```yaml
+tools: Glob, Grep, LS, Read, WebSearch
+model: MiniMax-M2.5
+reasoning: true
+tags: [security, audit, vulnerabilities, read-only]
+```
+
+**qa.md** — Test generation, test quality review, and coverage gap analysis.
+```yaml
+tools: Read, Write, Edit, Bash, Glob, Grep
+model: MiniMax-M2.5
+tags: [testing, qa, coverage]
+```
+
+**debugger.md** — Bug diagnosis, stack trace analysis, root cause finding.
+```yaml
+tools: Read, Edit, Bash, Glob, Grep
+model: MiniMax-M2.5
+reasoning: true
+tags: [debugging, diagnostics, bug-fix]
 ```
 
 **git.md** — Version control: commits, branches, PRs, diffs.
@@ -322,23 +362,23 @@ Orchestrator
 ┌─────────────────────────────┐
 │  Team (coordinate)          │
 │                             │
-│  ┌─────────┐  ┌──────────┐ │
-│  │ Planner │  │ Editor   │ │
-│  │         │  │ (can_    │ │
-│  │         │  │ orchestr)│ │
-│  └─────────┘  └────┬─────┘ │
+│  ┌─────────┐  ┌──────────┐  │
+│  │ Planner │  │ Editor   │  │
+│  │         │  │ (can_    │  │
+│  │         │  │ orchestr)│  │
+│  └─────────┘  └─────┬────┘  │
 │                     │       │
 └─────────────────────┼───────┘
                       │ Editor decides it needs help
                       ▼
-               ┌─────────────────────────┐
-               │  Sub-team (coordinate)  │
-               │                         │
-               │  ┌──────────┐ ┌───────┐ │
+               ┌──────────────────────────┐
+               │  Sub-team (coordinate)   │
+               │                          │
+               │  ┌──────────┐ ┌────────┐ │
                │  │ Explorer │ │Reviewer│ │
-               │  └──────────┘ └───┬───┘ │
-               │                   │     │
-               └───────────────────┼─────┘
+               │  └──────────┘ └───┬────┘ │
+               │                   │      │
+               └───────────────────┼──────┘
                                    │ Reviewer spawns its own team...
                                    ▼
                                   ...
@@ -440,10 +480,10 @@ Orchestrator analyzes task
                             │
                             ▼
                     ┌──────────────────────────┐
-                    │ Write to                  │
-                    │ .ember/              │
-                    │   agents.ephemeral/       │
-                    │     terraform-migrator.md │
+                    │ Write to                 │
+                    │ .ember/                  │
+                    │   agents.ephemeral/      │
+                    │     terraform-migrator.md│
                     └──────────────────────────┘
                             │
                             ▼
@@ -574,8 +614,8 @@ Result: Explorer agent searches and reads code, returns explanation. Fast, cheap
 ```json
 {
   "team_mode": "coordinate",
-  "agent_names": ["planner", "editor", "reviewer"],
-  "reasoning": "Multi-step task: needs planning (new dependency, multiple files), implementation, and review. Coordinate mode lets planner go first, then editor implements, reviewer validates."
+  "agent_names": ["architect", "editor", "qa", "security"],
+  "reasoning": "Multi-step task: needs architecture design (new dependency, multiple files), implementation, test generation, and security review for the new endpoint."
 }
 ```
 
@@ -589,8 +629,8 @@ Result: Planner designs approach → Editor implements → Reviewer checks. All 
 ```json
 {
   "team_mode": "broadcast",
-  "agent_names": ["reviewer", "explorer"],
-  "reasoning": "PR review benefits from independent parallel analysis. Reviewer checks quality, Explorer traces impact across codebase. Broadcast gives independent perspectives."
+  "agent_names": ["reviewer", "security"],
+  "reasoning": "PR review benefits from independent parallel analysis. Reviewer checks code quality, Security analyzes for vulnerabilities. Broadcast gives independent perspectives."
 }
 ```
 

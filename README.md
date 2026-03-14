@@ -33,7 +33,7 @@ Claude Code uses a single agent loop — powerful but monolithic. Ember Code tak
 ```bash
 brew install ignite-ember
 # or: pip install ignite-ember
-ignite-ember login       # sign up / log in for hosted models
+ignite-ember /login       # sign up / log in for hosted models
 ignite-ember
 ```
 
@@ -53,7 +53,7 @@ git clone https://github.com/ignite-ember/ember-code.git
 cd ember-code
 pip install -e ".[dev]"
 make check               # lint + format + typecheck + test
-ignite-ember login
+ignite-ember /login
 ignite-ember
 ```
 
@@ -118,7 +118,7 @@ Agents can pause execution to request confirmation or user input before proceedi
 
 ## Documentation
 
-- **[Quickstart](docs/QUICKSTART.md)** — Get up and running in under 5 minutes
+- **[Quickstart](QUICKSTART.md)** — Get up and running in under 5 minutes
 - [Architecture](docs/ARCHITECTURE.md) — System design and agent topology
 - [Agents](docs/AGENTS.md) — Specialized agents and their roles
 - [Skills](docs/SKILLS.md) — Reusable prompted workflows (`/deploy`, `/review-pr`, etc.)

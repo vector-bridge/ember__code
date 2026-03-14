@@ -19,22 +19,22 @@ This is what enables IDE integration — VS Code, JetBrains, Cursor, and others 
                    │                                           │
                    ▼                                           │
 ┌──────────────────────────────────────────────────────────────┐
-│                    Ember Code (MCP Server)                    │
+│                    Ember Code (MCP Server)                   │
 │                                                              │
 │  Exposed Tools:                                              │
-│  ┌──────┬───────┬──────┬──────┬───────┬────────┬──────────┐ │
-│  │ Bash │ Read  │Write │ Edit │ Grep  │ Glob   │ SubAgent │ │
-│  └──────┴───────┴──────┴──────┴───────┴────────┴──────────┘ │
+│  ┌──────┬───────┬──────┬──────┬───────┬────────┬──────────┐  │
+│  │ Bash │ Read  │Write │ Edit │ Grep  │ Glob   │ SubAgent │  │
+│  └──────┴───────┴──────┴──────┴───────┴────────┴──────────┘  │
 │                                                              │
-│                    Ember Code (MCP Client)                    │
+│                    Ember Code (MCP Client)                   │
 │                              │                               │
 │              ┌───────────────┼───────────────┐               │
 │              ▼               ▼               ▼               │
-│     ┌──────────────┐ ┌──────────────┐ ┌──────────────┐      │
-│     │ JetBrains    │ │  Playwright  │ │  Custom      │      │
-│     │ MCP Server   │ │  MCP Server  │ │  MCP Server  │      │
-│     │ (IDE tools)  │ │ (browser)    │ │              │      │
-│     └──────────────┘ └──────────────┘ └──────────────┘      │
+│     ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │
+│     │ JetBrains    │ │  Playwright  │ │  Custom      │       │
+│     │ MCP Server   │ │  MCP Server  │ │  MCP Server  │       │
+│     │ (IDE tools)  │ │ (browser)    │ │              │       │
+│     └──────────────┘ └──────────────┘ └──────────────┘       │
 └──────────────────────────────────────────────────────────────┘
 ```
 

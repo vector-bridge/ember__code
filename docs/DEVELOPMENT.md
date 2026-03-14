@@ -6,8 +6,8 @@ Guide for contributing to Ember Code and understanding the codebase.
 
 ```
 ember-code/
+├── QUICKSTART.md                      # Getting started guide (project root)
 ├── docs/                              # Documentation
-│   ├── QUICKSTART.md
 │   ├── ARCHITECTURE.md
 │   ├── AGENTS.md
 │   ├── SKILLS.md
@@ -23,9 +23,14 @@ ember-code/
 │   └── DEVELOPMENT.md
 ├── agents/                            # Built-in agent definitions (.md)
 │   ├── explorer.md
+│   ├── architect.md
 │   ├── planner.md
 │   ├── editor.md
+│   ├── simplifier.md
 │   ├── reviewer.md
+│   ├── security.md
+│   ├── qa.md
+│   ├── debugger.md
 │   ├── git.md
 │   └── conversational.md
 ├── skills/                            # Built-in skills (SKILL.md)
@@ -38,7 +43,15 @@ ember-code/
 │       ├── __init__.py                # Package root, version string
 │       ├── __main__.py                # Entry point (ignite-ember)
 │       ├── cli.py                     # Click CLI (flags, subcommands, pipe mode)
-│       ├── session.py                 # Session loop, knowledge/memory integration
+│       ├── session/
+│       │   ├── __init__.py            # Re-exports Session, run_session_interactive
+│       │   ├── core.py                # Session class: subsystem wiring, message handling
+│       │   ├── commands.py            # Slash command dispatch
+│       │   ├── interactive.py         # Interactive REPL loop
+│       │   ├── runner.py              # Single-message execution
+│       │   ├── persistence.py         # Session listing, naming, history
+│       │   ├── memory_ops.py          # Memory retrieval and optimization
+│       │   └── knowledge_ops.py       # Knowledge add/search/sync
 │       ├── orchestrator.py            # Orchestrator: task analysis → TeamPlan
 │       ├── pool.py                    # AgentPool: load/parse .md agent definitions
 │       ├── team_builder.py            # Build Agno Teams/Agents from TeamPlan
@@ -307,7 +320,7 @@ make test            # verify tests still pass
 - **Integration tests** — Orchestrator decisions, team assembly, AgnoFeatures application
 - **Mock LLM calls** — mock model responses to test orchestration logic
 - **Agent definition tests** — validate all built-in `.md` files parse correctly
-- **314 tests** across 14 test files, all passing
+- **418 tests** across 14 test files, all passing
 
 ## Slash Commands
 

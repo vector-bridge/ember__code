@@ -366,19 +366,17 @@ Place custom tools in `~/.ember/tools/` or `.ember/tools/` for project-level too
 
 Each built-in agent's tools are declared in its `.md` file. This table shows the defaults:
 
-| Tool | Explorer | Planner | Editor | Reviewer | Git |
-|---|---|---|---|---|---|
-| `Read` | yes | yes | yes | yes | yes |
-| `Write` | - | - | yes | - | - |
-| `Edit` | - | - | yes | - | - |
-| `Grep` | yes | yes | yes | yes | yes |
-| `Glob` | yes | yes | yes | yes | yes |
-| `Bash` | - | - | yes | - | yes |
-| `LS` | yes | yes | - | yes | - |
-| `VectorBridge` | yes | yes | yes | yes | - |
-| `WebSearch` | yes | yes | - | yes | - |
-| `WebFetch` | yes | - | - | yes | - |
-| `Python` | - | - | yes | - | - |
-| `Orchestrate` | yes | yes | yes | yes | yes |
+| Tool | Explorer | Architect | Planner | Editor | Simplifier | Reviewer | Security | QA | Debugger | Git | Conversational |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `Read` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | - |
+| `Write` | - | - | - | yes | - | - | - | yes | - | - | - |
+| `Edit` | - | - | - | yes | yes | - | - | yes | yes | - | - |
+| `Grep` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | - |
+| `Glob` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | - |
+| `Bash` | - | - | - | yes | yes | - | - | yes | yes | yes | - |
+| `LS` | yes | yes | yes | - | - | yes | yes | - | - | - | - |
+| `WebSearch` | yes | yes | yes | - | - | yes | yes | - | - | - | - |
+| `WebFetch` | yes | - | - | - | - | yes | - | - | - | - | - |
+| `Orchestrate` | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | - |
 
 Since agents are `.md` files, you can change any agent's tools by editing its definition or overriding it in `.ember/agents/`.

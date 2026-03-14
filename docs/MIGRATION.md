@@ -31,7 +31,7 @@ Or copy your agents/skills into `.ember/agents/` and `.ember/skills/` — no con
 ```bash
 brew install ignite-ember
 # or: pip install ignite-ember
-ignite-ember login                   # sign up at ignite-ember.sh
+ignite-ember /login                   # sign up at ignite-ember.sh
 ignite-ember                         # start — enable cross_tool_support to pick up existing agents
 ```
 
@@ -211,7 +211,7 @@ models:
 ### Minimal (just switch)
 
 - [ ] `brew install ignite-ember` (or `pip install ignite-ember`)
-- [ ] `ignite-ember login` (sign up at ignite-ember.sh)
+- [ ] `ignite-ember /login` (sign up at ignite-ember.sh)
 - [ ] Run `ignite-ember` — it automatically picks up:
   - `.claude/agents/*.md` (your agents)
   - `.mcp.json` (your MCP servers)

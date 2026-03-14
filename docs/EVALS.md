@@ -55,13 +55,13 @@ Agent modified (.md file)
 ┌──────────────────────────────┐
 │         Results              │
 │                              │
-│  explorer: 12/12 passed ✓   │
-│  editor:   9/10 passed ✗    │
+│  explorer: 12/12 passed ✓    │
+│  editor:   9/10 passed ✗     │
 │    ✗ edit_existing_file:     │
 │      ReliabilityEval FAIL    │
 │      expected: [Edit]        │
 │      got: [Write] (overwrote)│
-│  planner:  8/8 passed ✓     │
+│  planner:  8/8 passed ✓      │
 └──────────────────────────────┘
 ```
 

@@ -29,7 +29,7 @@ pip install -e ".[dev]"
 Ember Code ships with hosted models (MiniMax M2.5) — sign up for a free API key:
 
 ```bash
-ignite-ember login
+ignite-ember /login
 ```
 
 Or bring your own model key:
@@ -45,12 +45,12 @@ ignite-ember
 ```
 
 On first launch, Ember Code:
-1. Creates default agents in `.ember/agents/` (explorer, planner, editor, reviewer, git, conversational)
+1. Creates default agents in `.ember/agents/` (explorer, architect, planner, editor, simplifier, reviewer, security, qa, debugger, git, conversational)
 2. Asks a few questions about your role and workflow
 3. Proposes project-specific agents based on your codebase
 4. You're ready to work
 
-See [Onboarding](ONBOARDING.md) for the full first-run flow.
+See [Onboarding](docs/ONBOARDING.md) for the full first-run flow.
 
 ---
 
@@ -108,9 +108,14 @@ Agents are `.md` files with YAML frontmatter. Each agent has a role, tools, and 
 ```
 .ember/agents/
 ├── explorer.md       # reads and searches the codebase
+├── architect.md      # designs component architecture
 ├── planner.md        # designs implementation plans
 ├── editor.md         # creates and modifies files
+├── simplifier.md     # post-edit code polish
 ├── reviewer.md       # reviews code for quality
+├── security.md       # vulnerability analysis
+├── qa.md             # test generation and review
+├── debugger.md       # bug diagnosis and root cause analysis
 ├── git.md            # handles version control
 └── conversational.md # answers questions
 ```
@@ -330,7 +335,7 @@ The Orchestrator will start including it in teams immediately.
 
 ## Coming from Claude Code?
 
-Most things just work. See the [Migration Guide](MIGRATION.md) for details, but the short version:
+Most things just work. See the [Migration Guide](docs/MIGRATION.md) for details, but the short version:
 
 ```bash
 # Enable cross-tool support to pick up existing Claude Code agents
@@ -347,10 +352,10 @@ Ember Code also reads `CLAUDE.md`, `.claude/agents/*.md`, and `.mcp.json` as-is.
 
 ## Next Steps
 
-- [Architecture](ARCHITECTURE.md) — how dynamic team assembly works
-- [Agents](AGENTS.md) — agent format, built-in agents, creating your own
-- [Configuration](CONFIGURATION.md) — full settings reference
-- [Tools](TOOLS.md) — all available toolkits
-- [Skills](SKILLS.md) — reusable prompted workflows
-- [Security](SECURITY.md) — permissions, sandboxing, audit logging
-- [Development](DEVELOPMENT.md) — contributing to Ember Code
+- [Architecture](docs/ARCHITECTURE.md) — how dynamic team assembly works
+- [Agents](docs/AGENTS.md) — agent format, built-in agents, creating your own
+- [Configuration](docs/CONFIGURATION.md) — full settings reference
+- [Tools](docs/TOOLS.md) — all available toolkits
+- [Skills](docs/SKILLS.md) — reusable prompted workflows
+- [Security](docs/SECURITY.md) — permissions, sandboxing, audit logging
+- [Development](docs/DEVELOPMENT.md) — contributing to Ember Code
