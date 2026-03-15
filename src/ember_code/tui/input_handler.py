@@ -57,6 +57,7 @@ class AutocompleteProvider:
         "/knowledge",
         "/clear",
         "/config",
+        "/model",
     )
 
     def __init__(self, skill_pool: "SkillPool | None" = None):

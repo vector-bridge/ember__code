@@ -45,6 +45,10 @@ class CommandResult:
     def sessions(cls) -> "CommandResult":
         return cls(kind="action", action="sessions")
 
+    @classmethod
+    def model(cls) -> "CommandResult":
+        return cls(kind="action", action="model")
+
 
 class CommandHandler:
     """Handles slash commands, decoupled from the TUI rendering.
@@ -92,6 +96,7 @@ class CommandHandler:
             "- `/rename <name>` — rename the current session\n"
             "- `/memory` — list stored memories\n"
             "- `/memory optimize` — consolidate memories\n"
+            "- `/model [name]` — switch model (picker or direct)\n"
             "- `/config` — show current settings\n"
             "\n## Skills\n"
             f"{skills_text or '(no skills loaded)'}\n"
@@ -209,6 +214,21 @@ class CommandHandler:
             "- `/knowledge search <query>` — search the knowledge base\n"
         )
 
+    async def _cmd_model(self, args: str) -> "CommandResult":
+        name = args.strip()
+        if name:
+            # Direct switch: /model gemini-2.5-flash
+            registry = self._session.settings.models.registry
+            if name not in registry:
+                available = ", ".join(sorted(registry.keys()))
+                return CommandResult.error(
+                    f"Unknown model: '{name}'. Available: {available}"
+                )
+            self._session.settings.models.default = name
+            return CommandResult.info(f"Switched to model: {name}")
+        # No args: show picker
+        return CommandResult.model()
+
     async def _cmd_config(self, _args: str) -> "CommandResult":
         s = self._session.settings
         return CommandResult.markdown(
@@ -259,4 +279,5 @@ class CommandHandler:
         "/memory": _cmd_memory,
         "/knowledge": _cmd_knowledge,
         "/config": _cmd_config,
+        "/model": _cmd_model,
     }

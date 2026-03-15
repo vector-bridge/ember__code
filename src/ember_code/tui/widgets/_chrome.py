@@ -213,6 +213,8 @@ class StatusBar(Widget):
 class QueuePanel(Widget):
     """Interactive panel showing queued messages."""
 
+    can_focus = True
+
     DEFAULT_CSS = """
     QueuePanel {
         dock: bottom;
@@ -318,26 +320,37 @@ class QueuePanel(Widget):
     def on_key(self, event) -> None:
         if not self._items:
             return
+        event.stop()
+        event.prevent_default()
 
         if event.key == "up":
-            event.prevent_default()
             self.selected_index = max(0, self.selected_index - 1)
         elif event.key == "down":
-            event.prevent_default()
             self.selected_index = min(len(self._items) - 1, self.selected_index + 1)
         elif event.key in ("delete", "backspace"):
-            event.prevent_default()
             if 0 <= self.selected_index < len(self._items):
                 self.post_message(self.ItemDeleted(self.selected_index))
         elif event.key == "enter":
-            event.prevent_default()
             if 0 <= self.selected_index < len(self._items):
                 self.post_message(
                     self.ItemEditRequested(self.selected_index, self._items[self.selected_index])
                 )
         elif event.key == "escape":
-            event.prevent_default()
             self.post_message(self.PanelClosed())
+
+    def on_click(self, event) -> None:
+        """Click a queue item to select it."""
+        target = event.widget if hasattr(event, "widget") else None
+        if target is None:
+            return
+        for i in range(len(self._items)):
+            try:
+                widget = self.query_one(f"#q-{i}", Static)
+                if target is widget or target.is_descendant_of(widget):
+                    self.selected_index = i
+                    return
+            except Exception:
+                pass
 
 
 class TipBar(Static):

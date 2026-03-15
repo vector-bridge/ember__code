@@ -10,6 +10,7 @@ from ember_code.tui.widgets._chrome import (
 )
 from ember_code.tui.widgets._constants import SPINNER_FRAMES
 from ember_code.tui.widgets._dialogs import (
+    ModelPickerWidget,
     PermissionDialog,
     SessionInfo,
     SessionPickerWidget,
@@ -29,6 +30,7 @@ __all__ = [
     "AgentTreeWidget",
     "InputHistory",
     "PromptInput",
+    "ModelPickerWidget",
     "MCPCallWidget",
     "MessageWidget",
     "PermissionDialog",

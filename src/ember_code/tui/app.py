@@ -30,6 +30,7 @@ from ember_code.tui.session_manager import SessionManager
 from ember_code.tui.status_tracker import StatusTracker
 from ember_code.tui.widgets import (
     MessageWidget,
+    ModelPickerWidget,
     PromptInput,
     QueuePanel,
     SessionPickerWidget,
@@ -334,6 +335,9 @@ class EmberApp(App):
 
         self._status.update_status_bar()
 
+        # Show a random tip
+        self._start_tip_rotation()
+
         self.query_one("#user-input", PromptInput).focus()
 
         # ── Check for updates (non-blocking) ─────────────────────────
@@ -431,6 +435,8 @@ class EmberApp(App):
             self._conversation.append_info("Conversation cleared.")
         elif result.action == "sessions":
             asyncio.create_task(self._sessions.show_picker())
+        elif result.action == "model":
+            self._show_model_picker()
         elif result.kind == "markdown":
             self._conversation.append_markdown(result.content)
         elif result.kind == "info":
@@ -446,6 +452,26 @@ class EmberApp(App):
 
     @on(SessionPickerWidget.Cancelled)
     def _on_session_cancelled(self, _event: SessionPickerWidget.Cancelled) -> None:
+        self.query_one("#user-input", PromptInput).focus()
+
+    # ── Model picker ────────────────────────────────────────────────
+
+    def _show_model_picker(self) -> None:
+        models = sorted(self.settings.models.registry.keys())
+        current = self.settings.models.default
+        picker = ModelPickerWidget(models=models, current_model=current)
+        self.mount(picker)
+        picker.focus()
+
+    @on(ModelPickerWidget.Selected)
+    def _on_model_selected(self, event: ModelPickerWidget.Selected) -> None:
+        self.settings.models.default = event.model_name
+        self._status.update_status_bar()
+        self._conversation.append_info(f"Switched to model: {event.model_name}")
+        self.query_one("#user-input", PromptInput).focus()
+
+    @on(ModelPickerWidget.Cancelled)
+    def _on_model_cancelled(self, _event: ModelPickerWidget.Cancelled) -> None:
         self.query_one("#user-input", PromptInput).focus()
 
     # ── Queue panel events ─────────────────────────────────────────
@@ -522,6 +548,36 @@ class EmberApp(App):
                 )
         except Exception:
             pass  # never break the app for an update check
+
+    # ── Tips ───────────────────────────────────────────────────────
+
+    _TIPS = [
+        "/model — switch the active model",
+        "/help — list all commands and shortcuts",
+        "/sessions — browse and resume past sessions",
+        "/clear — reset conversation context",
+        "\\ + Enter inserts a newline",
+        "/agents — list loaded agents and their tools",
+        "/skills — list available skills",
+        "/config — show current settings",
+    ]
+
+    def _start_tip_rotation(self) -> None:
+        import random
+        try:
+            tip_bar = self.query_one("#tip-bar", TipBar)
+            tip_bar.set_tip(random.choice(self._TIPS))
+            self.set_interval(30, self._rotate_tip)
+        except Exception:
+            pass
+
+    def _rotate_tip(self) -> None:
+        import random
+        try:
+            tip_bar = self.query_one("#tip-bar", TipBar)
+            tip_bar.set_tip(random.choice(self._TIPS))
+        except Exception:
+            pass
 
     async def on_resize(self, event: Resize) -> None:
         """Remove and remount the welcome box so CSS border redraws cleanly."""
