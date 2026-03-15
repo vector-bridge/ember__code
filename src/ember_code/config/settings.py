@@ -147,6 +147,8 @@ class DisplayConfig(BaseModel):
     show_routing: bool = False
     show_reasoning: bool = False
     color_theme: str = "auto"
+    tool_result_preview_lines: int = 4
+    message_truncate_lines: int = 10
 
 
 class Settings(BaseModel):

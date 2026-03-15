@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from ember_code.config.models import ModelRegistry
 from ember_code.config.settings import Settings
+from ember_code.config.tool_permissions import ToolPermissions
 from ember_code.tools.registry import resolve_tools
 
 
@@ -113,8 +114,9 @@ class AgentParser:
         model = ModelRegistry(settings).get_model(agent_model)
 
         tools = []
+        permissions = ToolPermissions(project_dir=Path(base_dir) if base_dir else None)
         if definition.tools:
-            tools = resolve_tools(definition.tools, base_dir=base_dir)
+            tools = resolve_tools(definition.tools, base_dir=base_dir, permissions=permissions)
 
         kwargs: dict[str, Any] = {
             "name": definition.name,

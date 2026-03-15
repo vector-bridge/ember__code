@@ -180,3 +180,10 @@ If `ember.md` contradicts general simplification best practices, follow `ember.m
 - **Glob**: Use to find related files when you need to understand how modified code connects to the rest of the project.
 - **Grep**: Use to find all usages of a function or variable before renaming it or changing its signature.
 - **Bash**: Use to run `git diff`, tests, linters, and formatters. Do not use for file editing.
+
+## Rules
+
+- **Always use Grep for searching file contents** — never use Shell/Bash to run `grep` or `rg`. Grep automatically skips binary files and __pycache__.
+- **Use Glob for finding files by pattern** — not `find` or `ls -R` via Shell.
+- **Use Read for reading files** — not `cat` or `head` via Shell.
+- **Reserve Shell/Bash for running project commands** (tests, builds, git operations) — not for searching or reading code.

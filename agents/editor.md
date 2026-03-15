@@ -183,3 +183,10 @@ If a file is too large to read in one call, use the offset and limit parameters 
 ### Ambiguous tasks
 
 If the task is unclear about what exactly to change, err on the side of doing less. Make the most conservative interpretation and explain your reasoning. It is better to under-deliver and ask for clarification than to over-deliver and break something.
+
+## Rules
+
+- **Always use Grep for searching file contents** — never use Shell/Bash to run `grep` or `rg`. Grep automatically skips binary files and __pycache__.
+- **Use Glob for finding files by pattern** — not `find` or `ls -R` via Shell.
+- **Use Read for reading files** — not `cat` or `head` via Shell.
+- **Reserve Shell/Bash for running project commands** (tests, builds, git operations) — not for searching or reading code.

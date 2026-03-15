@@ -1,10 +1,11 @@
 """Modal/overlay widgets: permission dialog, session picker."""
 
+import asyncio
 from datetime import datetime
 
 from pydantic import BaseModel
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -74,26 +75,32 @@ class PermissionDialog(Widget):
         ("deny", "Deny"),
     ]
 
+    can_focus = True
+
     DEFAULT_CSS = """
     PermissionDialog {
         layer: dialog;
-        align: center middle;
-        width: 60;
+        dock: bottom;
+        width: 100%;
         height: auto;
-        max-height: 20;
+        max-height: 14;
         background: $surface-darken-1;
-        border: heavy $warning;
-        padding: 1 2;
+        border-top: heavy $warning;
+        padding: 0 2;
+    }
+
+    PermissionDialog .perm-header {
+        height: auto;
+        width: 100%;
     }
 
     PermissionDialog .title {
         text-style: bold;
         color: $warning;
-        margin-bottom: 1;
     }
 
     PermissionDialog .description {
-        margin-bottom: 1;
+        color: $text;
     }
 
     PermissionDialog .option-list {
@@ -111,6 +118,11 @@ class PermissionDialog(Widget):
         color: $text;
         text-style: bold;
     }
+
+    PermissionDialog .hint {
+        color: $text-muted;
+        margin-top: 1;
+    }
     """
 
     class Approved(Message):
@@ -123,19 +135,25 @@ class PermissionDialog(Widget):
 
     selected_index = reactive(0)
 
-    def __init__(self, tool_name: str, description: str):
+    def __init__(self, tool_name: str, details: str = "", description: str = ""):
         super().__init__()
         self._tool_name = tool_name
-        self._description = description
+        self._description = details or description
+        self._decision: asyncio.Future | None = None
+        self.last_choice: str = "deny"  # tracks which option was selected
 
     def compose(self) -> ComposeResult:
-        yield Static("Permission Required", classes="title")
-        yield Static(f"Tool: [bold]{self._tool_name}[/bold]", classes="description")
-        yield Static(self._description, classes="description")
+        with Horizontal(classes="perm-header"):
+            yield Static(
+                f"[bold $warning]  {self._tool_name}[/bold $warning]  "
+                f"[dim]{self._description}[/dim]",
+                classes="title",
+            )
         with Vertical(classes="option-list"):
             for i, (_key, label) in enumerate(self._OPTIONS):
                 cls = "option -selected" if i == 0 else "option"
                 yield Static(f"  {label}", id=f"opt-{i}", classes=cls)
+        yield Static("[dim]↑/↓ to select · Enter to confirm · Esc to deny[/dim]", classes="hint")
 
     def watch_selected_index(self, old: int, new: int) -> None:
         """Update visual selection when index changes."""
@@ -148,26 +166,30 @@ class PermissionDialog(Widget):
             pass
 
     def on_key(self, event) -> None:
+        event.stop()
+        event.prevent_default()
         if event.key == "up":
-            event.prevent_default()
             self.selected_index = max(0, self.selected_index - 1)
         elif event.key == "down":
-            event.prevent_default()
             self.selected_index = min(len(self._OPTIONS) - 1, self.selected_index + 1)
         elif event.key == "enter":
-            event.prevent_default()
             self._confirm_selection()
         elif event.key == "escape":
-            event.prevent_default()
             self.post_message(self.Denied())
+            if self._decision and not self._decision.done():
+                self._decision.set_result(False)
             self.remove()
 
     def on_click(self, event) -> None:
         """Allow clicking an option to select and confirm."""
+        # Check if the click target is one of the option widgets
+        target = event.widget if hasattr(event, "widget") else None
+        if target is None:
+            return
         for i in range(len(self._OPTIONS)):
             try:
                 widget = self.query_one(f"#opt-{i}", Static)
-                if widget is event.widget or widget is getattr(event, "_sender", None):
+                if target is widget or target.is_descendant_of(widget):
                     self.selected_index = i
                     self._confirm_selection()
                     return
@@ -176,11 +198,21 @@ class PermissionDialog(Widget):
 
     def _confirm_selection(self) -> None:
         key, _label = self._OPTIONS[self.selected_index]
+        self.last_choice = key
         if key == "deny":
             self.post_message(self.Denied())
+            if self._decision and not self._decision.done():
+                self._decision.set_result(False)
         else:
             self.post_message(self.Approved(key))
+            if self._decision and not self._decision.done():
+                self._decision.set_result(True)
         self.remove()
+
+    async def wait_for_decision(self) -> bool:
+        """Block until the user makes a choice. Returns True if approved."""
+        self._decision = asyncio.get_event_loop().create_future()
+        return await self._decision
 
 
 class SessionPickerWidget(Widget):

@@ -199,3 +199,10 @@ Flag them explicitly. Flaky tests are worse than no tests because they train dev
 - **Write**: Use to create new test files.
 - **Edit**: Use to modify existing test files — add new test cases, fix broken tests, update assertions.
 - **Bash**: Use to run tests, install test dependencies, check test configuration. Always run tests after creating or modifying them.
+
+## Rules
+
+- **Always use Grep for searching file contents** — never use Shell/Bash to run `grep` or `rg`. Grep automatically skips binary files and __pycache__.
+- **Use Glob for finding files by pattern** — not `find` or `ls -R` via Shell.
+- **Use Read for reading files** — not `cat` or `head` via Shell.
+- **Reserve Shell/Bash for running project commands** (tests, builds, git operations) — not for searching or reading code.

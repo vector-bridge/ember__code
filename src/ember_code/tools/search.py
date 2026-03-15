@@ -9,8 +9,8 @@ from agno.tools import Toolkit
 class GrepTools(Toolkit):
     """Content search using ripgrep (rg)."""
 
-    def __init__(self, base_dir: str | None = None):
-        super().__init__(name="ember_grep")
+    def __init__(self, base_dir: str | None = None, **kwargs):
+        super().__init__(name="ember_grep", **kwargs)
         self.base_dir = Path(base_dir) if base_dir else Path.cwd()
         self.register(self.grep)
         self.register(self.grep_files)
@@ -115,8 +115,8 @@ class GrepTools(Toolkit):
 class GlobTools(Toolkit):
     """File pattern matching using pathlib."""
 
-    def __init__(self, base_dir: str | None = None):
-        super().__init__(name="ember_glob")
+    def __init__(self, base_dir: str | None = None, **kwargs):
+        super().__init__(name="ember_glob", **kwargs)
         self.base_dir = Path(base_dir) if base_dir else Path.cwd()
         self.register(self.glob_files)
 
@@ -136,9 +136,11 @@ class GlobTools(Toolkit):
         if not search_dir.exists():
             return f"Error: Directory not found: {search_dir}"
 
+        _SKIP_DIRS = {"__pycache__", ".git", "node_modules", ".venv", "venv", ".tox", ".mypy_cache"}
+
         matches = []
         for p in search_dir.glob(pattern):
-            if p.is_file():
+            if p.is_file() and not (_SKIP_DIRS & set(p.parts)):
                 matches.append(p)
                 if len(matches) >= max_results:
                     break

@@ -162,8 +162,11 @@ class ExecutionManager:
 
             # Stream execution
             response_text = ""
+            display = self._app.settings.display
             handler = StreamHandler(
                 self._conversation.container, spinner, self._status,
+                executor=executor, hitl=self._hitl,
+                tool_preview_lines=display.tool_result_preview_lines,
             )
 
             try:
@@ -201,10 +204,6 @@ class ExecutionManager:
             except Exception:
                 pass
 
-            # HITL: handle active_requirements
-            if hasattr(response_text, "is_paused") and response_text.is_paused:
-                await self._hitl.handle(executor, response_text)
-
             self.current_executor = None
             self.current_run_id = None
 
@@ -232,6 +231,14 @@ class ExecutionManager:
             self._status.add_tokens(m.input_tokens, m.output_tokens)
             self._status.end_run()
             self._status.update_context_usage()
+
+            # Inline run stats after the assistant message
+            elapsed = time.monotonic() - start_time
+            self._conversation.append_run_stats(
+                elapsed_seconds=elapsed,
+                input_tokens=m.input_tokens,
+                output_tokens=m.output_tokens,
+            )
 
         except Exception as e:
             self._conversation.append_error(f"Error: {e}")

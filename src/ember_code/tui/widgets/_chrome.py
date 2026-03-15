@@ -99,14 +99,18 @@ class StatusBar(Widget):
         self._last_elapsed: float = 0.0
         self._last_input: int = 0
         self._last_output: int = 0
+        self._total_input: int = 0
+        self._total_output: int = 0
 
     def update_model(self, model: str) -> None:
         self._model_name = model
         self._tick += 1
 
     def add_tokens(self, input_tokens: int = 0, output_tokens: int = 0) -> None:
-        """No-op — kept for API compatibility."""
-        pass
+        """Accumulate session-wide token totals."""
+        self._total_input += input_tokens
+        self._total_output += output_tokens
+        self._tick += 1
 
     def set_run_tokens(self, input_tokens: int, output_tokens: int) -> None:
         self._run_input = input_tokens
@@ -149,7 +153,19 @@ class StatusBar(Widget):
             return str(n)
         if n < 10_000:
             return f"{n / 1000:.1f}k"
-        return f"{n // 1000}k"
+        if n < 1_000_000:
+            return f"{n // 1000}k"
+        if n < 10_000_000:
+            return f"{n / 1_000_000:.1f}m"
+        if n < 1_000_000_000:
+            return f"{n // 1_000_000}m"
+        if n < 10_000_000_000:
+            return f"{n / 1_000_000_000:.1f}b"
+        if n < 1_000_000_000_000:
+            return f"{n // 1_000_000_000}b"
+        if n < 10_000_000_000_000:
+            return f"{n / 1_000_000_000_000:.1f}t"
+        return f"{n // 1_000_000_000_000}t"
 
     @staticmethod
     def _fmt_time(seconds: float) -> str:
@@ -169,16 +185,14 @@ class StatusBar(Widget):
             parts.append(f"[bold]{self._model_name}[/bold]")
 
         if self._running:
-            elapsed = self._run_elapsed
-            r_in, r_out = self._run_input, self._run_output
-        else:
-            elapsed = self._last_elapsed
-            r_in, r_out = self._last_input, self._last_output
+            # Show live elapsed time only while running
+            parts.append(self._fmt_time(self._run_elapsed))
 
-        if elapsed > 0:
-            parts.append(self._fmt_time(elapsed))
-        if r_in or r_out:
-            parts.append(f"{self._fmt(r_in)}\u2191 {self._fmt(r_out)}\u2193 tokens")
+        if self._total_input or self._total_output:
+            parts.append(
+                f"{self._fmt(self._total_input)}\u2191 "
+                f"{self._fmt(self._total_output)}\u2193"
+            )
 
         if self._context_pct > 0:
             color = ""

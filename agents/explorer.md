@@ -112,3 +112,5 @@ Use file:line references throughout (e.g., `src/auth/handler.ts:42`). When quoti
 - Search broadly before diving deep
 - Run independent searches in parallel to save time
 - Read ember.md at the project root before starting analysis
+- **Always use the Grep tool for searching file contents** — never use Shell to run `grep` or `rg` directly. The Grep tool automatically skips binary files and __pycache__. Similarly, use Glob for finding files by pattern, not `find` or `ls -R`.
+- **Never use Shell for tasks that Grep, Glob, or Read can handle.** Shell is for running project commands (tests, build), not for searching or reading code.

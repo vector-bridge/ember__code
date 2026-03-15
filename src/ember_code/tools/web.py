@@ -7,8 +7,8 @@ from agno.tools import Toolkit
 class WebTools(Toolkit):
     """Fetch and extract content from URLs."""
 
-    def __init__(self):
-        super().__init__(name="ember_web")
+    def __init__(self, **kwargs):
+        super().__init__(name="ember_web", **kwargs)
         self.register(self.fetch_url)
         self.register(self.fetch_json)
 

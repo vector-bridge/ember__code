@@ -22,12 +22,24 @@ class TokenBadge(Static):
 
     @staticmethod
     def _fmt(n: int) -> str:
-        """Format token count: 1234 -> '1.2k', 12345 -> '12k'."""
+        """Format token count: 1234 -> '1.2k', 12345 -> '12k', 1000000 -> '1.0m'."""
         if n < 1000:
             return str(n)
         if n < 10_000:
             return f"{n / 1000:.1f}k"
-        return f"{n // 1000}k"
+        if n < 1_000_000:
+            return f"{n // 1000}k"
+        if n < 10_000_000:
+            return f"{n / 1_000_000:.1f}m"
+        if n < 1_000_000_000:
+            return f"{n // 1_000_000}m"
+        if n < 10_000_000_000:
+            return f"{n / 1_000_000_000:.1f}b"
+        if n < 1_000_000_000_000:
+            return f"{n // 1_000_000_000}b"
+        if n < 10_000_000_000_000:
+            return f"{n / 1_000_000_000_000:.1f}t"
+        return f"{n // 1_000_000_000_000}t"
 
     def _format(self) -> str:
         return f"[dim]in:[/dim] {self._fmt(self._input)}  [dim]out:[/dim] {self._fmt(self._output)}"

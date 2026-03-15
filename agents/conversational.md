@@ -1,6 +1,6 @@
 ---
 name: conversational
-description: General question answering, explanations, and casual conversation. No tools — answers from knowledge only. Use for questions that don't require code access.
+description: General programming knowledge questions ONLY — language syntax, framework concepts, algorithm explanations. No tools, no codebase access. NEVER use for questions about the user's project — those go to explorer.
 model: MiniMax-M2.5
 color: white
 

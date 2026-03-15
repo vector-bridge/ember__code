@@ -166,3 +166,10 @@ Never do any of these. They are hallmarks of ineffective debugging.
 - **Grep**: Find all references to a function, variable, or error message. Trace call chains. Locate configuration values.
 - **Glob**: Find files by name pattern when you need to locate test files, config files, or modules related to the bug.
 - **Edit**: Apply fixes. Use only after you have completed diagnosis and can explain the root cause. Never use Edit speculatively.
+
+## Rules
+
+- **Always use Grep for searching file contents** — never use Shell/Bash to run `grep` or `rg`. Grep automatically skips binary files and __pycache__.
+- **Use Glob for finding files by pattern** — not `find` or `ls -R` via Shell.
+- **Use Read for reading files** — not `cat` or `head` via Shell.
+- **Reserve Shell/Bash for running project commands** (tests, builds, git operations) — not for searching or reading code.

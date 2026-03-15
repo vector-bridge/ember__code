@@ -56,6 +56,7 @@ class EmberApp(App):
 
     Screen {
         overflow-y: hidden;
+        layers: default dialog;
     }
 
     Markdown .code_inline {
@@ -295,7 +296,7 @@ class EmberApp(App):
         )
 
         container = self.query_one("#conversation", ScrollableContainer)
-        self._conversation = ConversationView(container)
+        self._conversation = ConversationView(container, display_config=self.settings.display)
 
         # Welcome banner — centered box + capabilities
         await container.mount(
@@ -310,7 +311,9 @@ class EmberApp(App):
 
         # Initialise managers
         self._status = StatusTracker(self)
-        self._hitl = HITLHandler(self, self._conversation)
+        from ember_code.config.tool_permissions import ToolPermissions
+        self._tool_permissions = ToolPermissions()
+        self._hitl = HITLHandler(self, self._conversation, self._tool_permissions)
         self._execution = ExecutionManager(
             self,
             self._conversation,

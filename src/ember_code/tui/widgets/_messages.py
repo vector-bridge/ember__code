@@ -14,8 +14,6 @@ class MessageWidget(Widget):
     or use Ctrl+O (expand all) to reveal the full content.
     """
 
-    TRUNCATE_LINES = 10
-    """Number of lines shown before truncation kicks in."""
 
     DEFAULT_CSS = """
     MessageWidget {
@@ -77,11 +75,12 @@ class MessageWidget(Widget):
 
     expanded = reactive(False)
 
-    def __init__(self, content: str, role: str = "user"):
+    def __init__(self, content: str, role: str = "user", truncate_lines: int = 10):
         super().__init__()
         self._content = content
         self._role = role
-        self._is_long = len(content.splitlines()) > self.TRUNCATE_LINES
+        self._truncate_lines = truncate_lines
+        self._is_long = len(content.splitlines()) > self._truncate_lines
 
     def compose(self) -> ComposeResult:
         role_display = "> " if self._role == "user" else "● "
@@ -96,7 +95,7 @@ class MessageWidget(Widget):
                     else:
                         yield Static(self._content, classes="message-content")
                 else:
-                    truncated = "\n".join(self._content.splitlines()[: self.TRUNCATE_LINES])
+                    truncated = "\n".join(self._content.splitlines()[: self._truncate_lines])
 
                     if self._role == "assistant":
                         yield Markdown(truncated, classes="message-content")
@@ -105,7 +104,7 @@ class MessageWidget(Widget):
                         yield Static(truncated, classes="message-content")
                         yield Static(self._content, classes="message-content-full")
 
-                    lines_hidden = len(self._content.splitlines()) - self.TRUNCATE_LINES
+                    lines_hidden = len(self._content.splitlines()) - self._truncate_lines
                     yield Static(
                         f"[dim italic]... {lines_hidden} more lines — click to expand[/dim italic]",
                         classes="show-more",
@@ -257,13 +256,14 @@ class ToolCallLiveWidget(Static):
     }
     """
 
-    def __init__(self, tool_name: str, args_summary: str = "", status: str = "running"):
+    def __init__(self, tool_name: str, args_summary: str = "", status: str = "running", preview_lines: int = 4):
         self._tool_name = self._FRIENDLY_NAMES.get(tool_name, tool_name)
         self._args_summary = args_summary
         self._status = status
         self._result_summary = ""
         self._full_result = ""
         self._expanded = False
+        self._preview_lines = preview_lines
         display = self._format()
         super().__init__(display)
 
@@ -275,13 +275,24 @@ class ToolCallLiveWidget(Static):
             return f"[bold $accent]● {self._tool_name}{args}[/bold $accent]"
         # Done
         line1 = f"[green]●[/green] [bold]{self._tool_name}{args}[/bold]"
-        if self._expanded and self._full_result:
-            escaped = self._full_result.replace("[", "\\[")
+        if not self._full_result:
+            if self._result_summary:
+                return line1 + f"\n  [dim]└ {self._result_summary}[/dim]"
+            return line1
+
+        escaped = self._full_result.replace("[", "\\[")
+        lines = escaped.splitlines()
+
+        if self._expanded:
             return line1 + f"\n[dim]{escaped}[/dim]"
-        if self._result_summary:
-            hint = " — click to expand" if self._full_result else ""
-            return line1 + f"\n  [dim]└ {self._result_summary}{hint}[/dim]"
-        return line1
+
+        # Collapsed: show up to PREVIEW_LINES
+        preview = "\n".join(lines[: self._preview_lines])
+        remaining = len(lines) - self._preview_lines
+        result = line1 + f"\n[dim]{preview}[/dim]"
+        if remaining > 0:
+            result += f"\n  [dim]└ {remaining} more lines — click to expand[/dim]"
+        return result
 
     def on_click(self) -> None:
         if self._status == "done" and self._full_result:

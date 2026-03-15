@@ -17,8 +17,9 @@ class ConversationView:
     boilerplate throughout the app.
     """
 
-    def __init__(self, container: ScrollableContainer):
+    def __init__(self, container: ScrollableContainer, display_config=None):
         self._container = container
+        self._display = display_config
 
     @property
     def container(self) -> ScrollableContainer:
@@ -37,11 +38,15 @@ class ConversationView:
         self._container.mount(widget)
         self._auto_scroll()
 
+    @property
+    def _truncate_lines(self) -> int:
+        return self._display.message_truncate_lines if self._display else 10
+
     def append_user(self, text: str) -> None:
-        self.append(MessageWidget(text, role="user"))
+        self.append(MessageWidget(text, role="user", truncate_lines=self._truncate_lines))
 
     def append_assistant(self, text: str) -> None:
-        self.append(MessageWidget(text, role="assistant"))
+        self.append(MessageWidget(text, role="assistant", truncate_lines=self._truncate_lines))
 
     def append_markdown(self, text: str) -> None:
         self.append(Markdown(text, classes="assistant-message"))

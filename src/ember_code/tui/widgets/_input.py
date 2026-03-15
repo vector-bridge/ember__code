@@ -20,6 +20,9 @@ class PromptInput(TextArea):
     PromptInput:focus {
         border: none;
     }
+    PromptInput .text-area--placeholder {
+        color: $text-muted;
+    }
     """
 
     class Submitted(Message):

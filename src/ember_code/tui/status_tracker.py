@@ -17,6 +17,8 @@ class StatusTracker:
     def __init__(self, app: "EmberApp"):
         self._app = app
         self.total_tokens_used: int = 0
+        # Context tokens: only main conversation agent tokens (excludes sub-agents)
+        self._context_input_tokens: int = 0
         self.max_context_tokens: int = 128_000
 
     def _bar(self) -> StatusBar | None:
@@ -54,10 +56,19 @@ class StatusTracker:
         if bar:
             bar.update_model(session.settings.models.default)
 
+    def add_context_tokens(self, input_tokens: int) -> None:
+        """Track main conversation input tokens for context % calculation.
+
+        Only call this for the top-level agent's model requests — not sub-agents.
+        The input_tokens of the last main-agent request approximates how full
+        the context window is (since it includes conversation history).
+        """
+        self._context_input_tokens = input_tokens
+
     def update_context_usage(self) -> None:
-        if self.total_tokens_used <= 0:
+        if self._context_input_tokens <= 0:
             return
-        pct = min(int(self.total_tokens_used / self.max_context_tokens * 100), 100)
+        pct = min(int(self._context_input_tokens / self.max_context_tokens * 100), 100)
         bar = self._bar()
         if bar:
             bar.set_context_usage(pct)
@@ -67,3 +78,4 @@ class StatusTracker:
 
     def reset(self) -> None:
         self.total_tokens_used = 0
+        self._context_input_tokens = 0

@@ -17,7 +17,8 @@ Use when one agent clearly fits the request. This is the fastest path — zero c
 **Examples:**
 - "Fix the off-by-one error in pagination.py" → **editor** (direct code change, single file, clear intent)
 - "What does the `resolve_config` function do?" → **explorer** (read-only investigation, no edits needed)
-- "How does React context propagation work?" → **conversational** (general knowledge question, no codebase interaction)
+- "How do hooks work?" → **explorer** (likely refers to a project feature — read the actual code first)
+- "How does React context propagation work?" → **conversational** (general knowledge question about React, clearly not project-specific)
 - "Commit these changes with message 'fix auth bug'" → **git** (explicit git operation)
 - "Review my changes to the auth module" → **reviewer** (code review, read-only analysis with feedback)
 - "Create a plan for adding WebSocket support" → **planner** (architecture and task breakdown, no execution)
@@ -71,7 +72,7 @@ Consider the conversation history when selecting agents and modes:
 
 - **Continuation signals** — If the user has been editing code in recent turns, a follow-up like "now add error handling" should route to **editor** without re-exploring. The editor already has context.
 - **Exploration-to-action flow** — If the previous turn was exploration ("how does X work?") and now the user says "ok fix it", this is a natural transition to **editor**. Use **single** mode — the conversation context carries forward.
-- **Simple knowledge questions** — Questions that don't require reading the codebase or using any tools ("what's the difference between `merge` and `rebase`?", "explain async/await") should go to **conversational**. Don't spin up heavyweight agents for lightweight questions.
+- **Simple knowledge questions** — Questions that are clearly about general programming concepts unrelated to the current project ("what's the difference between `merge` and `rebase`?", "explain async/await") should go to **conversational**. But if there is *any* chance the question refers to something in the codebase ("how do hooks work?", "how does the config system work?"), route to **explorer** instead — it needs to read the actual code.
 - **Git keywords** — Messages containing explicit git vocabulary (commit, push, pull, PR, branch, diff, merge, rebase, stash, cherry-pick) almost always belong to the **git** agent. Only override this when the user is clearly asking a conceptual question ("explain what rebase does" → conversational).
 - **Ambiguous "fix" requests** — "Fix this" with no prior context needs exploration first. "Fix this" after a conversation about a specific bug can go straight to editor. If the user provides a stack trace or error output, prefer **debugger** first.
 - **Security keywords** — Messages mentioning vulnerabilities, injection, XSS, CSRF, auth bypass, secrets, or "is this safe" should route to **security**.
@@ -93,9 +94,12 @@ Every agent you include adds latency and token cost. Be ruthless about minimizin
 
 When the intent is genuinely ambiguous:
 
-- If the message reads like a **question** → default to **conversational** (single mode). The user can always follow up with a more specific request.
+- If the message reads like a **question about the project or codebase** → default to **explorer** (single mode). Questions like "how does X work?", "what does Y do?", "explain the Z system" almost always refer to the user's actual code and require reading it. The explorer will trace the real implementation and give a grounded answer.
+- If the message reads like a **general knowledge question** with no project reference → default to **conversational** (single mode). Examples: "what's the difference between merge and rebase?", "explain async/await", "how do React hooks work?". These don't need codebase access.
 - If the message reads like an **action request** → default to **editor** (single mode). The editor can read code to understand context before making changes.
 - If you cannot determine the scope → default to **single** mode with the most likely agent. Overcomplicating the plan is worse than picking a slightly suboptimal single agent.
+
+**Critical rule:** When the user asks "how does X work?" and X could plausibly be a feature, module, or concept in *their project*, always route to **explorer**, not conversational. The explorer reads the actual code. The conversational agent has no tools and will hallucinate project details. Only use conversational for questions that are clearly about general programming concepts unrelated to the codebase.
 
 ## Output
 

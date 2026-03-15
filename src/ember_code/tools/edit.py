@@ -12,8 +12,8 @@ class EmberEditTools(Toolkit):
     producing minimal, reviewable diffs. Inspired by Claude Code's Edit tool.
     """
 
-    def __init__(self, base_dir: str | None = None):
-        super().__init__(name="ember_edit")
+    def __init__(self, base_dir: str | None = None, **kwargs):
+        super().__init__(name="ember_edit", **kwargs)
         self.base_dir = Path(base_dir) if base_dir else Path.cwd()
         self.register(self.edit_file)
         self.register(self.edit_file_replace_all)

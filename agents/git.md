@@ -144,3 +144,10 @@ When merge conflicts occur:
 **Diverged branches** — If the local branch has diverged from the remote (both have new commits), prefer `git pull --rebase` to keep a linear history, unless the project prefers merge commits.
 
 **Interactive commands** — Never use `-i` flags (`git rebase -i`, `git add -i`) as they require interactive input which is not supported. For rebase operations, do not use `--no-edit` as it is not a valid option for `git rebase`.
+
+## Rules
+
+- **Always use Grep for searching file contents** — never use Shell/Bash to run `grep` or `rg`. Grep automatically skips binary files and __pycache__.
+- **Use Glob for finding files by pattern** — not `find` or `ls -R` via Shell.
+- **Use Read for reading files** — not `cat` or `head` via Shell.
+- **Reserve Shell/Bash for running project commands** (tests, builds, git operations) — not for searching or reading code.

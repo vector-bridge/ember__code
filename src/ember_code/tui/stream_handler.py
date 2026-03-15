@@ -1,7 +1,7 @@
 """Stream handler — processes Agno streaming events into TUI widgets."""
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agno.run import agent as agent_events
 from agno.run import team as team_events
@@ -13,6 +13,9 @@ from ember_code.tui.widgets import (
     StreamingMessageWidget,
     ToolCallLiveWidget,
 )
+
+if TYPE_CHECKING:
+    from ember_code.tui.hitl_handler import HITLHandler
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +65,7 @@ _TASK_CREATED_EVENTS = (team_events.TaskCreatedEvent,)
 _TASK_UPDATED_EVENTS = (team_events.TaskUpdatedEvent,)
 _TASK_ITERATION_STARTED = (team_events.TaskIterationStartedEvent,)
 _TASK_STATE_UPDATED = (team_events.TaskStateUpdatedEvent,)
+_RUN_PAUSED_EVENTS = (agent_events.RunPausedEvent, team_events.RunPausedEvent)
 
 
 class StreamHandler:
@@ -76,10 +80,21 @@ class StreamHandler:
     - RunStartedEvent → agent dispatch display
     """
 
-    def __init__(self, conversation: ScrollableContainer, spinner: SpinnerWidget, status_bar=None):
+    def __init__(
+        self,
+        conversation: ScrollableContainer,
+        spinner: SpinnerWidget,
+        status_bar=None,
+        executor: Any = None,
+        hitl: "HITLHandler | None" = None,
+        tool_preview_lines: int = 4,
+    ):
         self._conversation = conversation
         self._spinner = spinner
         self._status_bar = status_bar
+        self._executor = executor
+        self._hitl = hitl
+        self._tool_preview_lines = tool_preview_lines
         self._stream_widget: StreamingMessageWidget | None = None
         self.metrics = TokenMetrics()
         self.has_streamed_content: bool = False
@@ -139,6 +154,8 @@ class StreamHandler:
             await self._on_task_updated(event)
         elif isinstance(event, _TASK_ITERATION_STARTED):
             await self._on_task_iteration(event)
+        elif isinstance(event, _RUN_PAUSED_EVENTS):
+            await self._on_run_paused(event)
         elif isinstance(event, _TASK_STATE_UPDATED):
             pass  # TaskStateUpdated is noisy, skip
         elif hasattr(event, "content") and isinstance(getattr(event, "content", None), str):
@@ -173,12 +190,18 @@ class StreamHandler:
     # ── Tool calls ─────────────────────────────────────────────────
 
     async def _on_tool_started(self, event: Any) -> None:
+        # Finalize any in-progress streaming widget so the tool call
+        # appears after the text that preceded it, not at the very end
+        if self._stream_widget is not None:
+            self._stream_widget.finalize()
+            self._stream_widget = None
+
         tool_exec = event.tool
         raw_name = (tool_exec.tool_name or "tool") if tool_exec else "tool"
         tool_name = ToolCallLiveWidget._FRIENDLY_NAMES.get(raw_name, raw_name)
         args_summary = self._format_tool_args(tool_exec.tool_args if tool_exec else None)
         self._spinner.set_label(f"Running {tool_name}")
-        widget = ToolCallLiveWidget(tool_name, args_summary, status="running")
+        widget = ToolCallLiveWidget(tool_name, args_summary, status="running", preview_lines=self._tool_preview_lines)
         await self._conversation.mount(widget)
         self._auto_scroll()
 
@@ -217,8 +240,12 @@ class StreamHandler:
         self.metrics.accumulate(input_t, output_t)
         self._spinner.set_tokens(self.metrics.total)
         if self._status_bar:
-            # status_bar is actually a StatusTracker
             self._status_bar.set_run_tokens(self.metrics.input_tokens, self.metrics.output_tokens)
+            # Only track context usage from the main agent (no parent_run_id),
+            # not sub-agents whose tokens don't fill the main context window.
+            parent_run_id = getattr(event, "parent_run_id", None)
+            if not parent_run_id and input_t:
+                self._status_bar.add_context_tokens(input_t)
 
     def _on_run_completed(self, event: Any) -> None:
         self.metrics.accumulate_from_metrics(getattr(event, "metrics", None))
@@ -240,6 +267,49 @@ class StreamHandler:
             Static(f"[red]Error: {str(error)[:120]}[/red]", classes="run-error")
         )
         self._auto_scroll()
+
+    # ── HITL (run paused) ────────────────────────────────────────────
+
+    async def _on_run_paused(self, event: Any) -> None:
+        """Handle RunPausedEvent — invoke HITL handler and continue the run."""
+        if not self._hitl or not self._executor:
+            logger.warning("RunPausedEvent received but no HITL handler or executor available")
+            return
+
+        # Finalize streaming widget so the permission dialog appears after text
+        if self._stream_widget is not None:
+            self._stream_widget.finalize()
+            self._stream_widget = None
+
+        self._spinner.set_label("Awaiting confirmation")
+
+        # Resolve all requirements (show permission dialogs, etc.)
+        await self._hitl.handle(self._executor, event)
+
+        self._spinner.set_label("Continuing")
+
+        # Continue the run with streaming so continuation events render in the TUI.
+        # Pass run_id + session_id + requirements instead of the RunPausedEvent
+        # (which is not a RunOutput and lacks .events/.messages).
+        try:
+            if hasattr(self._executor, "acontinue_run"):
+                run_id = getattr(event, "run_id", None)
+                session_id = getattr(event, "session_id", None)
+                requirements = getattr(event, "requirements", None)
+                async for cont_event in self._executor.acontinue_run(
+                    run_id=run_id,
+                    session_id=session_id,
+                    requirements=requirements,
+                    stream=True,
+                    stream_events=True,
+                ):
+                    await self._dispatch_event(cont_event)
+        except Exception as e:
+            logger.error("Error continuing run after HITL: %s", e)
+            await self._conversation.mount(
+                Static(f"[red]Error continuing after confirmation: {e}[/red]")
+            )
+            self._auto_scroll()
 
     # ── Team orchestration ─────────────────────────────────────────
 
