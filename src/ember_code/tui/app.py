@@ -83,6 +83,8 @@ class EmberApp(App):
         width: 1fr;
         text-align: center;
         margin: 0 4;
+        border: round ansi_yellow;
+        padding: 0 1;
     }
 
     #capabilities {
@@ -94,7 +96,7 @@ class EmberApp(App):
 
     #footer {
         dock: bottom;
-        min-height: 4;
+        min-height: 5;
         height: auto;
         width: 100%;
     }
@@ -127,16 +129,10 @@ class EmberApp(App):
         border: none !important;
     }
 
-    #footer-sep {
-        height: auto;
-        width: 100%;
-        border-bottom: solid ansi_bright_black;
-    }
-
     #status-bar {
-        height: 1;
-        min-height: 1;
+        height: 2;
         width: 100%;
+        border-top: solid ansi_bright_black;
         content-align: center middle;
         text-align: center;
         color: $text-muted;
@@ -230,71 +226,24 @@ class EmberApp(App):
             except Exception:
                 return ""
 
-    def _build_welcome_banner(self, width: int | None = None) -> str:
-        """Build a centered welcome banner with text-based border."""
+    def _build_welcome_content(self) -> str:
+        """Build the welcome banner content (border is CSS)."""
         name = self._get_full_name()
         model = self.settings.models.default
         cwd = os.getcwd().replace(os.path.expanduser("~"), "~")
 
-        logo_lines = [
-            "▐▛███▜▌",
-            "▝▜█████▛▘",
-            " ▘▘ ▝▝ ",
-        ]
-
         greeting = f"[bold]Welcome back {name}![/bold]" if name else "[bold]Welcome![/bold]"
 
-        # Use provided width, or query the welcome-box widget, or fall back
-        if width is None:
-            try:
-                width = os.get_terminal_size().columns
-            except OSError:
-                width = 80
-        # #conversation padding=1 2 (4h) + #welcome-box margin=0 4 (8h) + scrollbar(1)
-        box_width = max(30, width - 13)
-        inner = box_width - 2  # space inside the border
-
-        # Build box with Unicode round corners
-        top = f"[ansi_yellow]╭{'─' * inner}╮[/ansi_yellow]"
-        bot = f"[ansi_yellow]╰{'─' * inner}╯[/ansi_yellow]"
-        empty = f"[ansi_yellow]│[/ansi_yellow]{' ' * inner}[ansi_yellow]│[/ansi_yellow]"
-
-        def visible_len(markup_text: str) -> int:
-            """Get the visible (non-markup) length of a Rich markup string."""
-            from rich.text import Text as RichText
-            return len(RichText.from_markup(markup_text).plain)
-
-        def center_line(text: str) -> str:
-            """Center text inside the box borders, truncating if too wide."""
-            vlen = visible_len(text)
-            if vlen > inner - 2:
-                # Truncate the plain text portion to fit
-                from rich.text import Text as RichText
-                rt = RichText.from_markup(text)
-                rt.truncate(inner - 4)
-                text = rt.markup + "…"
-                vlen = visible_len(text)
-            pad = max(0, inner - vlen)
-            left = pad // 2
-            right = pad - left
-            return f"[ansi_yellow]│[/ansi_yellow]{' ' * left}{text}{' ' * right}[ansi_yellow]│[/ansi_yellow]"
-
-        content_lines = [
-            empty,
-            center_line(greeting),
-            empty,
+        logo_lines = [
+            "[bold ansi_bright_red]▐▛███▜▌[/bold ansi_bright_red]",
+            "[bold ansi_bright_red]▝▜█████▛▘[/bold ansi_bright_red]",
+            "[bold ansi_bright_red] ▘▘ ▝▝ [/bold ansi_bright_red]",
         ]
-        for l in logo_lines:
-            colored = f"[bold ansi_bright_red]{l}[/bold ansi_bright_red]"
-            content_lines.append(center_line(colored))
+
         info = f"[bold]{model}[/bold]  [dim]·[/dim]  [dim]{cwd}[/dim]"
-        content_lines += [
-            empty,
-            center_line(info),
-            empty,
-        ]
 
-        return "\n".join([top] + content_lines + [bot])
+        lines = ["", greeting, ""] + logo_lines + ["", info, ""]
+        return "\n".join(lines)
 
     @staticmethod
     def _build_capabilities_text() -> str:
@@ -333,7 +282,6 @@ class EmberApp(App):
                     highlight_cursor_line=False,
                     placeholder="Type a message or /help",
                 )
-            yield Static("", id="footer-sep")
             yield StatusBar(id="status-bar")
 
     async def on_mount(self) -> None:
@@ -351,7 +299,7 @@ class EmberApp(App):
 
         # Welcome banner — centered box + capabilities
         await container.mount(
-            Static(self._build_welcome_banner(), id="welcome-box")
+            Static(self._build_welcome_content(), id="welcome-box")
         )
         await container.mount(
             Static(self._build_capabilities_text(), id="capabilities")
@@ -573,27 +521,22 @@ class EmberApp(App):
             pass  # never break the app for an update check
 
     async def on_resize(self, event: Resize) -> None:
-        """Rebuild the welcome box on resize and force full repaint."""
+        """Remove and remount the welcome box so CSS border redraws cleanly."""
         try:
             old_box = self.query_one("#welcome-box", Static)
         except NoMatches:
             return
 
-        # Use the event's width for accurate box sizing
-        new_content = self._build_welcome_banner(width=event.size.width)
         await old_box.remove()
 
-        # Re-mount before the capabilities widget (or at start of container)
         container = self.query_one("#conversation", ScrollableContainer)
+        new_box = Static(self._build_welcome_content(), id="welcome-box")
         try:
             caps = self.query_one("#capabilities", Static)
-            new_box = Static(new_content, id="welcome-box")
             await container.mount(new_box, before=caps)
         except NoMatches:
-            new_box = Static(new_content, id="welcome-box")
             await container.mount(new_box, before=0)
 
-        # Force full repaint of the screen
         self.screen.refresh(layout=True)
 
     def action_cancel(self) -> None:

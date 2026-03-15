@@ -202,7 +202,7 @@ class ToolCallWidget(Widget):
 
     def __init__(self, tool_name: str, args: dict | None = None, result: str = ""):
         super().__init__()
-        self._tool_name = tool_name
+        self._tool_name = ToolCallLiveWidget._FRIENDLY_NAMES.get(tool_name, tool_name)
         self._args = args or {}
         self._result = result
 
@@ -217,7 +217,7 @@ class ToolCallWidget(Widget):
                 parts.append(f"{k}={val}")
             args_summary = f" ({', '.join(parts)})"
 
-        title = f"Tool: {self._tool_name}{args_summary}"
+        title = f"{self._tool_name}{args_summary}"
 
         with Collapsible(title=title, collapsed=True):
             if self._result:
@@ -227,12 +227,28 @@ class ToolCallWidget(Widget):
 
 
 class ToolCallLiveWidget(Static):
-    """Claude Code-style tool call display.
+    """Claude Code-style tool call display with click-to-expand result.
 
-    Running:  ``● Read(file.py)``
-    Done:     ``● Read(file.py)``
-              ``└ Read 46 lines (ctrl+o to expand)``
+    Running:  ``● Shell(git status)``
+    Done:     ``● Shell(git status)``
+              ``└ completed in 0.03s — click to expand``
     """
+
+    # Friendly display names for internal tool names
+    _FRIENDLY_NAMES: dict[str, str] = {
+        "run_shell_command": "Shell",
+        "read_file": "Read",
+        "write_file": "Write",
+        "edit_file": "Edit",
+        "search_files": "Search",
+        "grep_search": "Grep",
+        "glob_files": "Glob",
+        "list_directory": "List",
+        "web_fetch": "Fetch",
+        "web_search": "WebSearch",
+        "spawn_agent": "Agent",
+        "spawn_team": "Team",
+    }
 
     DEFAULT_CSS = """
     ToolCallLiveWidget {
@@ -242,28 +258,40 @@ class ToolCallLiveWidget(Static):
     """
 
     def __init__(self, tool_name: str, args_summary: str = "", status: str = "running"):
-        self._tool_name = tool_name
+        self._tool_name = self._FRIENDLY_NAMES.get(tool_name, tool_name)
         self._args_summary = args_summary
         self._status = status
         self._result_summary = ""
+        self._full_result = ""
+        self._expanded = False
         display = self._format()
         super().__init__(display)
 
     def _format(self) -> str:
-        args = f"({self._args_summary})" if self._args_summary else ""
+        # Escape Rich markup in args to avoid bracket conflicts
+        safe_args = self._args_summary.replace("[", "\\[") if self._args_summary else ""
+        args = f"({safe_args})" if safe_args else ""
         if self._status == "running":
-            line1 = f"[bold $accent]● {self._tool_name}{args}[/bold $accent]"
-            return line1
+            return f"[bold $accent]● {self._tool_name}{args}[/bold $accent]"
         # Done
         line1 = f"[green]●[/green] [bold]{self._tool_name}{args}[/bold]"
+        if self._expanded and self._full_result:
+            escaped = self._full_result.replace("[", "\\[")
+            return line1 + f"\n[dim]{escaped}[/dim]"
         if self._result_summary:
-            line2 = f"\n  [dim]└ {self._result_summary} (ctrl+o to expand)[/dim]"
-            return line1 + line2
+            hint = " — click to expand" if self._full_result else ""
+            return line1 + f"\n  [dim]└ {self._result_summary}{hint}[/dim]"
         return line1
 
-    def mark_done(self, result_summary: str = "") -> None:
+    def on_click(self) -> None:
+        if self._status == "done" and self._full_result:
+            self._expanded = not self._expanded
+            self.update(self._format())
+
+    def mark_done(self, result_summary: str = "", full_result: str = "") -> None:
         self._status = "done"
         self._result_summary = result_summary
+        self._full_result = full_result
         self.update(self._format())
 
 

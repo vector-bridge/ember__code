@@ -174,7 +174,8 @@ class StreamHandler:
 
     async def _on_tool_started(self, event: Any) -> None:
         tool_exec = event.tool
-        tool_name = (tool_exec.tool_name or "tool") if tool_exec else "tool"
+        raw_name = (tool_exec.tool_name or "tool") if tool_exec else "tool"
+        tool_name = ToolCallLiveWidget._FRIENDLY_NAMES.get(raw_name, raw_name)
         args_summary = self._format_tool_args(tool_exec.tool_args if tool_exec else None)
         self._spinner.set_label(f"Running {tool_name}")
         widget = ToolCallLiveWidget(tool_name, args_summary, status="running")
@@ -182,13 +183,13 @@ class StreamHandler:
         self._auto_scroll()
 
     def _on_tool_completed(self, event: Any = None) -> None:
-        result_summary = ""
+        summary, full_result = ("", "")
         if event is not None:
-            result_summary = self._extract_result_summary(event)
+            summary, full_result = self._extract_result(event)
         try:
             for w in reversed(list(self._conversation.query(ToolCallLiveWidget))):
                 if w._status == "running":
-                    w.mark_done(result_summary)
+                    w.mark_done(summary, full_result)
                     break
         except Exception:
             pass
@@ -280,19 +281,39 @@ class StreamHandler:
     # ── Helpers ───────────────────────────────────────────────────
 
     @staticmethod
-    def _extract_result_summary(event: Any) -> str:
-        result = getattr(event, "result", None) or getattr(event, "content", None)
-        if result is None:
-            return ""
-        text = str(result)
-        if not text:
-            return ""
-        lines = text.strip().splitlines()
-        n_lines = len(lines)
-        if n_lines <= 1:
-            short = text[:80]
-            return short + "..." if len(text) > 80 else short
-        return f"{n_lines} lines of output"
+    def _extract_result(event: Any) -> tuple[str, str]:
+        """Extract (summary, full_result) from a tool completion event."""
+        tool = getattr(event, "tool", None)
+
+        # Get duration from metrics
+        timing = ""
+        if tool:
+            metrics = getattr(tool, "metrics", None)
+            if metrics:
+                duration = getattr(metrics, "duration", None)
+                if duration is not None:
+                    timing = f"{duration:.2f}s"
+
+        # Only use tool.result — event.content may contain unrelated agent output
+        result = getattr(tool, "result", None) if tool else None
+        full_text = str(result).strip() if result else ""
+
+        # Build summary
+        summary = ""
+        if full_text:
+            lines = full_text.splitlines()
+            if len(lines) <= 1:
+                short = full_text[:80]
+                summary = short + ("..." if len(full_text) > 80 else "")
+            else:
+                summary = f"{len(lines)} lines of output"
+
+        if summary and timing:
+            summary = f"{summary}, {timing}"
+        elif not summary and timing:
+            summary = f"completed in {timing}"
+
+        return summary, full_text
 
     @staticmethod
     def _format_tool_args(tool_args: dict | None) -> str:
