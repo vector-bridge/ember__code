@@ -120,6 +120,9 @@ DEFAULT_CONFIG = {
         "cross_tool_support": False,
         "auto_trigger": True,
     },
+    "auth": {
+        "credentials_file": "~/.ember/credentials.json",
+    },
     "display": {
         "markdown": True,
         "show_tool_calls": True,

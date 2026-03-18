@@ -30,6 +30,7 @@ class MCPConfigLoader:
         paths = [
             Path.home() / ".ember" / ".mcp.json",
             self.project_dir / ".mcp.json",
+            self.project_dir / ".ember" / ".mcp.json",
         ]
 
         for path in paths:

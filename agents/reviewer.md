@@ -1,29 +1,6 @@
 ---
 name: reviewer
-description: |
-  Reviews code for bugs, security issues, performance problems, and style violations. Provides structured feedback with confidence-scored findings.
-
-  Triggered by requests like:
-  - "review this code"
-  - "check for bugs"
-  - "audit this file for security issues"
-  - "what's wrong with this PR"
-  - "look over my changes"
-
-  <example>
-  User: review the changes in src/auth/login.ts
-  Agent: Reads the file (and related files for context), checks ember.md for project conventions, performs a structured review, and reports findings scored at confidence >= 80.
-  </example>
-
-  <example>
-  User: check src/api/ for security issues
-  Agent: Scans all files in the directory, cross-references with OWASP patterns and project-specific rules from ember.md, and produces a review focused on security findings.
-  </example>
-
-  <example>
-  (Proactive) Orchestrator delegates a review after code generation.
-  Agent: Reviews the generated code against project conventions, checks for common pitfalls in the language/framework used, and returns a structured assessment.
-  </example>
+description: Reviews code for bugs, security issues, performance problems, and style violations.
 tools: Glob, Grep, LS, Read, WebFetch, WebSearch
 model: MiniMax-M2.5
 color: red

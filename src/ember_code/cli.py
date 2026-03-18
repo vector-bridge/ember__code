@@ -27,6 +27,7 @@ from ember_code import __version__
 )
 @click.option("--no-web", is_flag=True, help="Disable web search/fetch tools")
 @click.option("--no-color", is_flag=True, help="Disable color output")
+@click.option("--debug", is_flag=True, help="Enable debug logging to ~/.ember/debug.log")
 @click.option("--strict", is_flag=True, help="Strict mode: deny all dangerous operations")
 @click.pass_context
 def cli(
@@ -45,10 +46,27 @@ def cli(
     pipe,
     no_web,
     no_color,
+    debug,
     strict,
 ):
     """Ember Code — AI coding assistant powered by Agno."""
     ctx.ensure_object(dict)
+
+    # ── Debug logging ──────────────────────────────────────────────
+    if debug:
+        import logging
+        from pathlib import Path
+
+        log_path = Path.home() / ".ember" / "debug.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(
+            filename=str(log_path),
+            level=logging.DEBUG,
+            format="%(asctime)s %(name)s %(levelname)s %(message)s",
+            force=True,
+        )
+        logging.getLogger("ember_code").setLevel(logging.DEBUG)
+        click.echo(f"Debug logging enabled → {log_path}")
 
     # Build CLI overrides
     cli_overrides = {}
@@ -155,7 +173,12 @@ def cli(
             settings=settings,
             resume_session_id=resume_session_id,
         )
-        app.run()
+        _run_app(app)
+
+
+def _run_app(app):
+    """Run the Textual app. SSE cleanup errors are silenced in on_unmount."""
+    app.run()
 
 
 # -- MCP subcommand --

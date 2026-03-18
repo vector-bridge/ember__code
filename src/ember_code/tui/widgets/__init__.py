@@ -1,5 +1,6 @@
 """Custom Textual widgets for Ember Code TUI."""
 
+from ember_code.tui.widgets._activity import AgentActivityWidget
 from ember_code.tui.widgets._chrome import (
     QueuePanel,
     SpinnerWidget,
@@ -10,6 +11,7 @@ from ember_code.tui.widgets._chrome import (
 )
 from ember_code.tui.widgets._constants import SPINNER_FRAMES
 from ember_code.tui.widgets._dialogs import (
+    LoginWidget,
     ModelPickerWidget,
     PermissionDialog,
     SessionInfo,
@@ -27,7 +29,9 @@ from ember_code.tui.widgets._messages import (
 from ember_code.tui.widgets._tokens import RunStatsWidget, TokenBadge
 
 __all__ = [
+    "AgentActivityWidget",
     "AgentTreeWidget",
+    "LoginWidget",
     "InputHistory",
     "PromptInput",
     "ModelPickerWidget",

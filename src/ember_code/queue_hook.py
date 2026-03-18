@@ -7,7 +7,7 @@ its next model call (alongside the tool result it just produced).
 
 Flow:
 1. Tool call N starts → clear any previously injected messages
-2. Tool call N executes via ``next_func``
+2. Tool call N executes via ``func`` (the next function in the hook chain)
 3. After execution → pop queued messages, set ``agent.additional_input``
 4. Model call N+1 sees: [tool_result_N, user: "[User sent: ...]"]
 5. Agent incorporates the new context into its next reasoning step
@@ -48,18 +48,26 @@ class QueueInjectorHook:
     def __call__(
         self,
         name: str = "",
-        func: Any = None,
+        func: Callable | None = None,
         args: dict[str, Any] | None = None,
         agent: Any = None,
         **kwargs: Any,
     ) -> Any:
         """Hook entry point — called by Agno around each tool execution.
 
-        Agno inspects the hook signature and passes matching parameters:
-        - ``name``: tool name
-        - ``func``: the next function in the chain (must be called)
-        - ``args``: tool arguments dict
-        - ``agent``: the running Agent instance
+        This is intentionally a **sync** function. Agno's sync tool execution
+        path filters out ``async def`` hooks via ``iscoroutinefunction`` and
+        skips them entirely — their coroutine repr then leaks into tool
+        results as ``<coroutine object ...>``. Keeping this sync ensures it
+        runs in both sync and async execution paths.
+
+        In Agno's sync path, ``func`` is always sync. In the async path,
+        Agno's wrapper awaits whatever this hook returns, so returning a
+        coroutine from an async ``func`` is fine.
+
+        NOTE: The parameter MUST be named ``func`` (not ``next_func`` etc.)
+        because Agno's ``_build_hook_args`` only recognises specific names:
+        ``func``, ``function``, ``function_call``, ``name``, ``args``, etc.
         """
         # Clear previously injected messages
         if agent and self._has_injected:
@@ -69,7 +77,9 @@ class QueueInjectorHook:
         # Execute the actual tool via the chain
         if args is None:
             args = {}
-        result = func(**args) if func else None
+        result = None
+        if func is not None:
+            result = func(**args)
 
         # Inject queued messages so the agent sees them on the next model call
         if self._queue and agent:

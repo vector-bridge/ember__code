@@ -28,6 +28,17 @@ class VectorStoreAdapter:
         except AttributeError:
             return None
 
+    def count(self) -> int:
+        """Return the number of documents stored in the vector DB."""
+        collection = self._get_collection()
+        if collection is None:
+            return 0
+        try:
+            return collection.count()
+        except Exception:
+            logger.debug("Could not get vector DB document count")
+            return 0
+
     def get_entry_ids(self) -> set[str]:
         """Return the set of document IDs stored in the vector DB."""
         collection = self._get_collection()

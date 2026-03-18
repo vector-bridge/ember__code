@@ -53,14 +53,29 @@ class ToolRegistry:
         """Register a custom tool factory."""
         self._factories[name] = factory
 
-    def resolve(self, tool_names: list[str] | str) -> list:
+    def resolve(
+        self,
+        tool_names: list[str] | str,
+        jetbrains_mcp: Any = None,
+        vscode_mcp: Any = None,
+        ide_mcp_clients: dict[str, Any] | None = None,
+    ) -> list:
         """Resolve tool names to Agno toolkit instances.
 
         Denied tools are skipped. Tools with "ask" permission get
         ``requires_confirmation_tools`` set so Agno triggers HITL.
 
+        When IDE MCP clients are provided, Agno tools that the IDE covers
+        are replaced with MCP equivalents. JetBrains and VS Code are
+        supported. Only one IDE override is applied (JetBrains takes
+        priority if both are present).
+
         Args:
             tool_names: Comma-separated string or list of tool names.
+            jetbrains_mcp: Optional connected JetBrains MCPTools instance.
+            vscode_mcp: Optional connected VS Code MCPTools instance.
+            ide_mcp_clients: Dict of IDE name → MCPTools (alternative to
+                             individual params). Keys: ``"jetbrains"``, ``"vscode"``.
 
         Returns:
             List of Agno toolkit instances.
@@ -92,6 +107,20 @@ class ToolRegistry:
             toolkit = self._factories[name](confirm=needs_confirm)
             tools.append(toolkit)
 
+        # Resolve IDE MCP clients from both param styles
+        jb = jetbrains_mcp or (ide_mcp_clients or {}).get("jetbrains")
+        vsc = vscode_mcp or (ide_mcp_clients or {}).get("vscode")
+
+        # Apply IDE MCP overrides (JetBrains takes priority)
+        if jb is not None:
+            from ember_code.mcp.jetbrains import filter_tools_with_jetbrains
+
+            tools = filter_tools_with_jetbrains(tools, tool_names, jb)
+        elif vsc is not None:
+            from ember_code.mcp.vscode import filter_tools_with_vscode
+
+            tools = filter_tools_with_vscode(tools, tool_names, vsc)
+
         return tools
 
     # ── Factory methods ───────────────────────────────────────────
@@ -100,22 +129,32 @@ class ToolRegistry:
     # pauses for HITL before executing them.
 
     def _make_read(self, confirm: bool = False):
+        # Read-only FileTools — search handled by Grep/Glob toolkits
         kwargs: dict = dict(
             base_dir=self.base_dir,
             enable_read_file=True,
             enable_save_file=False,
             enable_list_files=True,
+            enable_search_files=False,
+            enable_read_file_chunk=True,
+            enable_replace_file_chunk=False,
+            enable_search_content=False,
         )
         if confirm:
             kwargs["requires_confirmation_tools"] = ["read_file", "list_files"]
         return FileTools(**kwargs)
 
     def _make_write(self, confirm: bool = False):
+        # Write-only FileTools — only save_file (read ops handled by Read toolkit)
         kwargs: dict = dict(
             base_dir=self.base_dir,
-            enable_read_file=True,
+            enable_read_file=False,
             enable_save_file=True,
-            enable_list_files=True,
+            enable_list_files=False,
+            enable_search_files=False,
+            enable_read_file_chunk=False,
+            enable_replace_file_chunk=False,
+            enable_search_content=False,
         )
         if confirm:
             kwargs["requires_confirmation_tools"] = ["save_file"]
@@ -124,7 +163,11 @@ class ToolRegistry:
     def _make_edit(self, confirm: bool = False):
         kwargs: dict = dict(base_dir=str(self.base_dir))
         if confirm:
-            kwargs["requires_confirmation_tools"] = ["edit_file", "edit_file_replace_all", "create_file"]
+            kwargs["requires_confirmation_tools"] = [
+                "edit_file",
+                "edit_file_replace_all",
+                "create_file",
+            ]
         return EmberEditTools(**kwargs)
 
     def _make_bash(self, confirm: bool = False):
@@ -182,7 +225,15 @@ def resolve_tools(
     base_dir: str | None = None,
     config: Any = None,
     permissions: "ToolPermissions | None" = None,
+    jetbrains_mcp: Any = None,
+    vscode_mcp: Any = None,
+    ide_mcp_clients: dict[str, Any] | None = None,
 ) -> list:
     """Convenience wrapper around ToolRegistry.resolve()."""
     registry = ToolRegistry(base_dir=base_dir, permissions=permissions)
-    return registry.resolve(tool_names)
+    return registry.resolve(
+        tool_names,
+        jetbrains_mcp=jetbrains_mcp,
+        vscode_mcp=vscode_mcp,
+        ide_mcp_clients=ide_mcp_clients,
+    )

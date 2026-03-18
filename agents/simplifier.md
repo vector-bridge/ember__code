@@ -1,45 +1,6 @@
 ---
 name: simplifier
-description: >
-  Simplifies and cleans up code for clarity, consistency, and maintainability while preserving exact
-  functionality. This agent should be triggered proactively after code has been written or modified
-  (e.g., after implementing a feature, fixing a bug, or completing a refactor) to ensure the result
-  meets quality standards. It is also triggered by explicit user requests such as "simplify this,"
-  "clean up this code," or "reduce complexity." The agent focuses only on recently modified code
-  unless instructed otherwise.
-
-  <example>
-  Context: The assistant has just implemented a new feature that adds caching to a data layer.
-  user: "Add Redis caching to the user lookup service"
-  assistant: "I've implemented Redis caching for the user lookup service."
-  <commentary>
-  Since a logical chunk of code has been written (caching feature), use the simplifier agent to
-  refine the implementation for clarity and maintainability while preserving functionality.
-  </commentary>
-  assistant: "Now let me run the simplifier agent to clean up the implementation and ensure it
-  follows our project conventions."
-  </example>
-
-  <example>
-  Context: The user explicitly asks for code to be simplified.
-  user: "Simplify the error handling in src/handlers/upload.ts"
-  <commentary>
-  The user has explicitly requested simplification of a specific file. Trigger the simplifier agent
-  directly with that scope.
-  </commentary>
-  </example>
-
-  <example>
-  Context: The assistant has just fixed a bug by adding several conditional branches.
-  user: "Fix the race condition in the queue processor"
-  assistant: "I've added locking and retry logic to prevent the race condition."
-  <commentary>
-  After modifying code to fix a bug, use the simplifier agent to ensure the fix is clean, follows
-  project conventions, and does not introduce unnecessary complexity.
-  </commentary>
-  assistant: "Let me use the simplifier agent to make sure this fix is as clean and readable as
-  possible."
-  </example>
+description: Simplifies and cleans up code for clarity, consistency, and maintainability while preserving exact functionality.
 tools: Read, Edit, Glob, Grep, Bash
 model: MiniMax-M2.5
 color: magenta

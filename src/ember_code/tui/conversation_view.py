@@ -9,6 +9,7 @@ from ember_code.tui.widgets import (
     RunStatsWidget,
     TokenBadge,
 )
+from ember_code.tui.widgets._constants import AUTO_SCROLL_THRESHOLD
 
 
 class ConversationView:
@@ -27,7 +28,7 @@ class ConversationView:
 
     def _is_at_bottom(self) -> bool:
         """Check if the user is scrolled to (or near) the bottom."""
-        return self._container.max_scroll_y - self._container.scroll_y < 3
+        return self._container.max_scroll_y - self._container.scroll_y < AUTO_SCROLL_THRESHOLD
 
     def _auto_scroll(self) -> None:
         """Scroll to bottom only if user is already near the bottom."""
@@ -70,14 +71,11 @@ class ConversationView:
     def append_token_badge(self, input_tokens: int, output_tokens: int) -> None:
         self.append(TokenBadge(input_tokens, output_tokens))
 
-    def append_run_stats(
-        self,
-        elapsed_seconds: float,
-        input_tokens: int,
-        output_tokens: int,
-        model: str = "",
-    ) -> None:
-        self.append(RunStatsWidget(elapsed_seconds, input_tokens, output_tokens, model))
+    def append_run_stats(self, model: str = "") -> RunStatsWidget:
+        """Mount a live RunStatsWidget and return it for further updates."""
+        widget = RunStatsWidget(model=model)
+        self.append(widget)
+        return widget
 
     def clear(self) -> None:
         self._container.remove_children()

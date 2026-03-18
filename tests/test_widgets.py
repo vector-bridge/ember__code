@@ -2,6 +2,8 @@
 
 import time
 
+import pytest
+
 from ember_code.tui.widgets import (
     SPINNER_FRAMES,
     AgentTreeWidget,
@@ -104,7 +106,7 @@ class TestTokenBadge:
 
     def test_render_format(self):
         badge = TokenBadge(1500, 300)
-        rendered = badge._render()
+        rendered = badge.render_text()
         assert "1.5k" in rendered
         assert "300" in rendered
         assert "in:" in rendered
@@ -139,46 +141,46 @@ class TestStatusBar:
 
     def test_context_usage(self):
         bar = StatusBar()
-        bar.set_context_usage(42)
-        assert bar.context_used_pct == 42
+        bar.set_context_usage(context_tokens=42_000, max_context=100_000)
+        assert bar.context_used_pct == pytest.approx(42.0)
 
     def test_context_usage_zero(self):
         bar = StatusBar()
-        bar.set_context_usage(0)
-        assert bar.context_used_pct == 0
+        bar.set_context_usage(context_tokens=0, max_context=100_000)
+        assert bar.context_used_pct == 0.0
 
     def test_initial_context_pct(self):
         bar = StatusBar()
-        assert bar.context_used_pct == 0
+        assert bar.context_used_pct == 0.0
 
 
 class TestToolCallLiveWidget:
     def test_initial_running(self):
         w = ToolCallLiveWidget("read_file", "path=main.py", status="running")
-        rendered = w._render()
+        rendered = w.render_text()
         assert "read_file" in rendered
         assert "main.py" in rendered
 
     def test_mark_done(self):
         w = ToolCallLiveWidget("read_file", status="running")
-        assert w._status == "running"
-        w._status = "done"
-        rendered = w._render()
+        assert w.is_running()
+        w.mark_done()
+        rendered = w.render_text()
         assert "dim" in rendered  # done uses dim style
 
     def test_running_icon(self):
         w = ToolCallLiveWidget("test_tool", status="running")
-        rendered = w._render()
+        rendered = w.render_text()
         assert "⏳" in rendered
 
     def test_done_icon(self):
         w = ToolCallLiveWidget("test_tool", status="done")
-        rendered = w._render()
+        rendered = w.render_text()
         assert "✓" in rendered
 
     def test_no_args(self):
         w = ToolCallLiveWidget("test_tool", status="running")
-        rendered = w._render()
+        rendered = w.render_text()
         assert "test_tool" in rendered
 
 
@@ -191,25 +193,25 @@ class TestSpinnerWidget:
 
     def test_render_contains_label(self):
         w = SpinnerWidget(label="Planning")
-        rendered = w._render()
+        rendered = w.render_text()
         assert "Planning" in rendered
 
     def test_set_label(self):
         w = SpinnerWidget(label="Thinking")
         w._label = "Executing"
-        rendered = w._render()
+        rendered = w.render_text()
         assert "Executing" in rendered
 
     def test_set_tokens(self):
         w = SpinnerWidget()
         w._tokens = 1500
-        rendered = w._render()
+        rendered = w.render_text()
         assert "1.5k" in rendered
         assert "tokens" in rendered
 
     def test_no_tokens_no_display(self):
         w = SpinnerWidget()
-        rendered = w._render()
+        rendered = w.render_text()
         assert "tokens" not in rendered
 
     def test_tick_advances_frame(self):
@@ -226,7 +228,7 @@ class TestSpinnerWidget:
 
     def test_render_uses_spinner_frame(self):
         w = SpinnerWidget()
-        rendered = w._render()
+        rendered = w.render_text()
         assert SPINNER_FRAMES[0] in rendered
 
 
@@ -467,25 +469,29 @@ class TestQueuePanel:
 
 
 class TestRunStatsWidget:
-    def test_short_time(self):
-        w = RunStatsWidget(elapsed_seconds=2.3, input_tokens=100, output_tokens=50)
-        rendered = w._render()
-        assert "2.3s" in rendered
+    def test_live_widget(self):
+        w = RunStatsWidget()
+        w.update_tokens(100, 50)
+        rendered = w.render_text()
         assert "100" in rendered
 
-    def test_long_time(self):
-        w = RunStatsWidget(elapsed_seconds=125.0, input_tokens=0, output_tokens=0)
-        rendered = w._render()
-        assert "2m 5s" in rendered
+    def test_finalize(self):
+        w = RunStatsWidget()
+        w.update_tokens(100, 50)
+        w.finalize(elapsed_override=2.3)
+        rendered = w.render_text()
+        assert "2.3s" in rendered
 
     def test_with_model(self):
-        w = RunStatsWidget(elapsed_seconds=1.0, input_tokens=500, output_tokens=200, model="gpt-4o")
-        rendered = w._render()
+        w = RunStatsWidget(model="gpt-4o")
+        w.update_tokens(500, 200)
+        rendered = w.render_text()
         assert "gpt-4o" in rendered
 
     def test_no_tokens_no_token_section(self):
-        w = RunStatsWidget(elapsed_seconds=1.0, input_tokens=0, output_tokens=0)
-        rendered = w._render()
+        w = RunStatsWidget()
+        w.finalize(elapsed_override=1.0)
+        rendered = w.render_text()
         assert "Tokens:" not in rendered
 
     def test_fmt_time_static(self):

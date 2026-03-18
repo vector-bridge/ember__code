@@ -1,4 +1,4 @@
-"""Modal/overlay widgets: permission dialog, session picker, model picker."""
+"""Modal/overlay widgets: permission dialog, session picker, model picker, login."""
 
 import asyncio
 from datetime import datetime
@@ -9,7 +9,7 @@ from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import Static
+from textual.widgets import Input, Static
 
 
 class SessionInfo(BaseModel):
@@ -482,3 +482,143 @@ class ModelPickerWidget(Widget):
                     return
             except Exception:
                 pass
+
+
+class LoginWidget(Widget):
+    """Bottom-docked two-phase login dialog.
+
+    Phase 1: email input → request OTP code
+    Phase 2: code input → exchange for token → save credentials
+    """
+
+    can_focus = True
+
+    DEFAULT_CSS = """
+    LoginWidget {
+        layer: dialog;
+        dock: bottom;
+        width: 100%;
+        height: auto;
+        max-height: 12;
+        background: $surface-darken-1;
+        border-top: heavy $accent;
+        padding: 0 2;
+    }
+
+    LoginWidget .login-title {
+        text-style: bold;
+        color: $accent;
+    }
+
+    LoginWidget .login-status {
+        color: $text-muted;
+        margin-top: 1;
+    }
+
+    LoginWidget .login-error {
+        color: $error;
+    }
+
+    LoginWidget .login-input {
+        margin-top: 1;
+        width: 100%;
+        max-width: 60;
+    }
+
+    LoginWidget .hint {
+        color: $text-muted;
+        margin-top: 1;
+    }
+    """
+
+    class LoggedIn(Message):
+        """Posted on successful login."""
+
+        def __init__(self, email: str):
+            self.email = email
+            super().__init__()
+
+    class Cancelled(Message):
+        """Posted when the user cancels login."""
+
+        pass
+
+    def __init__(self, api_url: str = "https://api.ignite-ember.sh"):
+        super().__init__()
+        self._api_url = api_url
+        self._phase = 1  # 1 = email, 2 = code
+        self._email = ""
+        self._busy = False
+
+    def compose(self) -> ComposeResult:
+        yield Static("[bold $accent]Login to Ember Cloud[/bold $accent]", classes="login-title")
+        yield Static("Enter your email address:", classes="login-status", id="login-status")
+        yield Input(placeholder="you@example.com", id="login-input", classes="login-input")
+        yield Static("[dim]Enter to submit · Esc to cancel[/dim]", classes="hint")
+
+    def on_mount(self) -> None:
+        self.query_one("#login-input", Input).focus()
+
+    def on_key(self, event) -> None:
+        if event.key == "escape":
+            event.stop()
+            event.prevent_default()
+            self.post_message(self.Cancelled())
+            self.remove()
+
+    async def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter on the input field."""
+        event.stop()
+        value = event.value.strip()
+        if not value or self._busy:
+            return
+
+        if self._phase == 1:
+            await self._submit_email(value)
+        else:
+            await self._submit_code(value)
+
+    async def _submit_email(self, email: str) -> None:
+        """Phase 1: request OTP code."""
+        self._busy = True
+        status = self.query_one("#login-status", Static)
+        status.update("Sending verification code...")
+
+        try:
+            from ember_code.auth.client import request_sign_in_code
+
+            await request_sign_in_code(self._api_url, email)
+            self._email = email
+            self._phase = 2
+            status.update(f"Code sent to {email}. Enter the verification code:")
+            inp = self.query_one("#login-input", Input)
+            inp.value = ""
+            inp.placeholder = "Enter code"
+            inp.focus()
+        except Exception as e:
+            status.update(f"[red]Error: {e}[/red]")
+        finally:
+            self._busy = False
+
+    async def _submit_code(self, code: str) -> None:
+        """Phase 2: exchange code for token."""
+        self._busy = True
+        status = self.query_one("#login-status", Static)
+        status.update("Verifying...")
+
+        try:
+            from ember_code.auth.client import sign_in_with_code
+            from ember_code.auth.credentials import save_credentials
+
+            result = await sign_in_with_code(self._api_url, self._email, code)
+            token = result.get("access_token", "")
+            if not token:
+                status.update("[red]Error: no token received[/red]")
+                self._busy = False
+                return
+            save_credentials(token, self._email)
+            self.post_message(self.LoggedIn(self._email))
+            self.remove()
+        except Exception as e:
+            status.update(f"[red]Error: {e}[/red]")
+            self._busy = False

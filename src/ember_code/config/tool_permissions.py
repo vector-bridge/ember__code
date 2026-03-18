@@ -27,6 +27,7 @@ Rules:
 - "ToolName(key:value)"   — matches a specific key in the tool args dict
 """
 
+import contextlib
 import fnmatch
 import json
 import logging
@@ -97,6 +98,7 @@ def _extract_domain(url: str) -> str:
     """Extract domain from a URL."""
     try:
         from urllib.parse import urlparse
+
         return urlparse(url).netloc
     except Exception:
         return ""
@@ -124,7 +126,11 @@ def _match_rule_args(pattern: str, tool_name: str, tool_args: dict[str, Any] | N
             return fnmatch.fnmatch(domain, value)
 
         if key == "path" and tool_args:
-            path = tool_args.get("path", "") or tool_args.get("file_path", "") or tool_args.get("file_name", "")
+            path = (
+                tool_args.get("path", "")
+                or tool_args.get("file_path", "")
+                or tool_args.get("file_name", "")
+            )
             return fnmatch.fnmatch(str(path), value)
 
         # Generic: treat as prefix:glob against the full args string
@@ -180,8 +186,9 @@ class ToolPermissions:
         except Exception as e:
             logger.warning("Failed to load %s: %s", path, e)
 
-    def check(self, tool_name: str, func_name: str | None = None,
-              tool_args: dict[str, Any] | None = None) -> str:
+    def check(
+        self, tool_name: str, func_name: str | None = None, tool_args: dict[str, Any] | None = None
+    ) -> str:
         """Check permission for a specific tool call.
 
         Args:
@@ -232,10 +239,8 @@ class ToolPermissions:
         path = self._project_dir / ".ember" / "settings.local.json"
         data: dict[str, Any] = {}
         if path.exists():
-            try:
+            with contextlib.suppress(Exception):
                 data = json.loads(path.read_text())
-            except Exception:
-                pass
 
         perms = data.setdefault("permissions", {})
         # Remove from other lists if exact match exists

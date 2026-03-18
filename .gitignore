@@ -205,6 +205,5 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Ember Code local settings (user-specific, not shared)
-.ember/settings.local.json
-.ember/config.local.yaml
+# Ember Code local data (user-specific, not shared)
+.ember/

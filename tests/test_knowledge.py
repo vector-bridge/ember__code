@@ -212,59 +212,28 @@ class TestKnowledgeManager:
         assert result is None
 
 
-# ── AgnoFeatures + Knowledge ─────────────────────────────────────
+# ── Knowledge on Agno objects ─────────────────────────────────────
 
 
-class TestKnowledgeInFeatures:
-    def test_knowledge_defaults_none(self):
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
-        assert f.knowledge is None
-        assert f.search_knowledge is False
-
+class TestKnowledgeOnAgno:
     def test_knowledge_applied_to_agent(self):
         from agno.agent import Agent
 
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
-        f.knowledge = "fake-knowledge"
-        f.search_knowledge = True
-
-        agent = Agent(name="test")
-        f.apply_to_agent(agent)
+        agent = Agent(name="test", knowledge="fake-knowledge", search_knowledge=True)
         assert agent.knowledge == "fake-knowledge"
         assert agent.search_knowledge is True
-
-    def test_knowledge_not_applied_when_none(self):
-        from agno.agent import Agent
-
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
-        agent = Agent(name="test")
-        original_knowledge = agent.knowledge
-        f.apply_to_agent(agent)
-        assert agent.knowledge == original_knowledge
 
     def test_knowledge_applied_to_team(self):
         from agno.agent import Agent
         from agno.team.team import Team
 
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
-        f.knowledge = "fake-knowledge"
-        f.search_knowledge = True
-
         agent = Agent(name="a1")
-        team = Team(name="t", members=[agent], mode="coordinate")
-        f.apply_to_team(team)
+        team = Team(
+            name="t", members=[agent], mode="coordinate",
+            knowledge="fake-knowledge", search_knowledge=True,
+        )
         assert team.knowledge == "fake-knowledge"
         assert team.search_knowledge is True
-        # Members also get knowledge
-        assert agent.knowledge == "fake-knowledge"
 
 
 # ── Pydantic Models ──────────────────────────────────────────────
@@ -348,23 +317,15 @@ class TestLearningConfig:
     def test_learning_applied_to_agent(self):
         from agno.agent import Agent
 
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
-        f.learning = True
-        agent = Agent(name="test")
-        f.apply_to_agent(agent)
+        agent = Agent(name="test", learning=True)
         assert agent.learning is True
 
     def test_learning_disabled_by_default(self):
         from agno.agent import Agent
 
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
         agent = Agent(name="test")
-        f.apply_to_agent(agent)
-        # learning defaults to False in AgnoFeatures
+        # learning defaults to False in Agno
+        assert not agent.learning
 
 
 # ── Reasoning Config ─────────────────────────────────────────────
@@ -378,34 +339,27 @@ class TestReasoningConfig:
         assert cfg.add_few_shot is False
 
     def test_reasoning_tools_created_from_settings(self):
-        from ember_code.team_builder import _create_reasoning_tools
+        from ember_code.session.core import _create_reasoning_tools
 
         settings = Settings(reasoning=ReasoningConfig(enabled=True))
         tools = _create_reasoning_tools(settings)
         assert tools is not None
         assert tools.name == "reasoning_tools"
 
-    def test_reasoning_tools_applied_to_agent(self):
+    def test_reasoning_tools_not_created_when_disabled(self):
+        from ember_code.session.core import _create_reasoning_tools
+
+        settings = Settings(reasoning=ReasoningConfig(enabled=False))
+        tools = _create_reasoning_tools(settings)
+        assert tools is None
+
+    def test_reasoning_tools_on_agent(self):
         from agno.agent import Agent
         from agno.tools.reasoning import ReasoningTools
 
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
-        f.reasoning_tools = ReasoningTools(add_instructions=True)
-        agent = Agent(name="test")
-        f.apply_to_agent(agent)
+        tools = ReasoningTools(add_instructions=True)
+        agent = Agent(name="test", tools=[tools])
         assert any(isinstance(t, ReasoningTools) for t in (agent.tools or []))
-
-    def test_reasoning_not_applied_when_none(self):
-        from agno.agent import Agent
-
-        from ember_code.team_builder import AgnoFeatures
-
-        f = AgnoFeatures()
-        agent = Agent(name="test", tools=[])
-        f.apply_to_agent(agent)
-        assert len(agent.tools) == 0
 
 
 # ── Guardrails Config ────────────────────────────────────────────
@@ -419,39 +373,32 @@ class TestGuardrailsConfig:
         assert cfg.moderation is False
 
     def test_guardrails_none_when_disabled(self):
-        from ember_code.team_builder import _create_guardrails
+        from ember_code.session.core import _create_guardrails
 
         settings = Settings()
         result = _create_guardrails(settings)
         assert result is None
 
-    def test_guardrails_applied_to_agent(self):
+    def test_guardrails_on_agent(self):
         from agno.agent import Agent
-
-        from ember_code.team_builder import AgnoFeatures
 
         class FakeGuardrail:
             pass
 
-        f = AgnoFeatures()
-        f.pre_hooks = [FakeGuardrail()]
-        agent = Agent(name="test")
-        f.apply_to_agent(agent)
+        agent = Agent(name="test", pre_hooks=[FakeGuardrail()])
         assert len(agent.pre_hooks) == 1
 
-    def test_guardrails_applied_to_team(self):
+    def test_guardrails_on_team(self):
         from agno.agent import Agent
         from agno.team.team import Team
 
-        from ember_code.team_builder import AgnoFeatures
-
         class FakeGuardrail:
             pass
 
-        f = AgnoFeatures()
-        f.pre_hooks = [FakeGuardrail()]
-        team = Team(name="t", members=[Agent(name="a1")], mode="coordinate")
-        f.apply_to_team(team)
+        team = Team(
+            name="t", members=[Agent(name="a1")], mode="coordinate",
+            pre_hooks=[FakeGuardrail()],
+        )
         assert len(team.pre_hooks) == 1
 
 

@@ -13,8 +13,15 @@ def tmp_dir(tmp_path):
 
 @pytest.fixture
 def settings():
-    """Default Settings instance with defaults applied."""
-    return load_settings()
+    """Settings instance with a test-safe model (openai_like) as default.
+
+    Overrides any project config that may reference providers not available
+    in the test environment (e.g. gemini without google-genai installed).
+    """
+    s = load_settings()
+    # Ensure the default model resolves without optional provider packages
+    s.models.default = "MiniMax-M2.5"
+    return s
 
 
 @pytest.fixture

@@ -1,33 +1,6 @@
 ---
 name: security
-description: |
-  Performs deep security analysis of code to identify vulnerabilities, insecure patterns, and hardcoded secrets. Provides confidence-scored findings with specific remediation guidance.
-
-  Triggered when reviewing or writing code that touches:
-  - Authentication or authorization logic (JWT, OAuth, session management, RBAC)
-  - Payment processing or financial transactions
-  - User input handling, form validation, or request parsing
-  - Database queries (SQL, ORM, NoSQL)
-  - File system operations (reads, writes, uploads, path construction)
-  - API endpoints (REST, GraphQL, WebSocket)
-  - Shell/command execution
-  - Cryptographic operations or secret management
-  - Deserialization of untrusted data
-
-  <example>
-  User: I just added the login endpoint and password reset flow in src/auth/
-  Agent: Reads all files in src/auth/, checks ember.md for project security requirements, analyzes authentication logic for credential handling flaws, token vulnerabilities, brute-force exposure, and timing attacks, then produces a structured security report with confidence-scored findings.
-  </example>
-
-  <example>
-  User: review the security of our API routes in src/api/
-  Agent: Scans all route handlers for injection points, broken access control, mass assignment, SSRF, and sensitive data exposure. Cross-references with OWASP Top 10 patterns and project-specific rules from ember.md. Reports only findings with confidence >= 80.
-  </example>
-
-  <example>
-  (Proactive) Orchestrator delegates a security check after code that processes user uploads or executes shell commands is generated.
-  Agent: Analyzes the generated code for path traversal, command injection, unrestricted file types, and missing size limits. Returns a structured security assessment with remediation code examples.
-  </example>
+description: Performs security analysis of code to identify vulnerabilities, insecure patterns, and hardcoded secrets.
 tools: Glob, Grep, LS, Read, WebSearch
 model: MiniMax-M2.5
 color: red

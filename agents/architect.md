@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Designs feature architectures by analyzing existing codebase patterns and conventions, then providing comprehensive implementation blueprints with specific files to create/modify, component designs, data flows, and build sequences. Triggered when the user asks to design, architect, or plan a feature, module, or system; when they need a technical design document or blueprint; when they ask "how should I build X" or "what's the best approach for Y"; or when a task requires structural decisions before implementation begins.
+description: Designs feature architectures and provides implementation blueprints with component designs, data flows, and build sequences.
 tools: Glob, Grep, LS, Read, WebSearch
 model: MiniMax-M2.5
 color: cyan

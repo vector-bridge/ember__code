@@ -1,6 +1,5 @@
 """StatusTracker — tracks token usage, context window, and message count."""
 
-import contextlib
 from typing import TYPE_CHECKING
 
 from textual.css.query import NoMatches
@@ -49,7 +48,7 @@ class StatusTracker:
             bar.set_run_tokens(input_tokens, output_tokens)
 
     def update_status_bar(self) -> None:
-        session = self._app._session
+        session = self._app.session
         if not session:
             return
         bar = self._bar()
@@ -68,10 +67,15 @@ class StatusTracker:
     def update_context_usage(self) -> None:
         if self._context_input_tokens <= 0:
             return
-        pct = min(int(self._context_input_tokens / self.max_context_tokens * 100), 100)
         bar = self._bar()
         if bar:
-            bar.set_context_usage(pct)
+            bar.set_context_usage(self._context_input_tokens, self.max_context_tokens)
+
+    def set_ide_status(self, name: str, connected: bool) -> None:
+        """Update the IDE connection indicator in the status bar."""
+        bar = self._bar()
+        if bar:
+            bar.set_ide_status(name, connected)
 
     def record_turn(self) -> None:
         pass  # No longer tracking message count in status bar

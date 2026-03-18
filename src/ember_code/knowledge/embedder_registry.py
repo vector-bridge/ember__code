@@ -10,8 +10,6 @@ Resolution order:
 """
 
 import logging
-import os
-import subprocess
 from typing import Any
 
 from agno.knowledge.embedder.base import Embedder
@@ -77,15 +75,10 @@ class EmbedderRegistry:
 
     @staticmethod
     def _resolve_api_key(entry: dict[str, Any]) -> str | None:
-        """Resolve API key from env var or command."""
-        if "api_key_env" in entry:
-            return os.environ.get(entry["api_key_env"])
-        if "api_key_cmd" in entry:
-            result = subprocess.run(
-                entry["api_key_cmd"], shell=True, capture_output=True, text=True
-            )
-            return result.stdout.strip() if result.returncode == 0 else None
-        return None
+        """Resolve API key from direct value, env var, or command."""
+        from ember_code.config.api_keys import resolve_api_key
+
+        return resolve_api_key(entry)
 
     def _create_openai_compatible_embedder(
         self, entry: dict[str, Any], api_key: str | None

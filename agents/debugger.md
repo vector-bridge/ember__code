@@ -1,13 +1,6 @@
 ---
 name: debugger
-description: >
-  Diagnoses bugs, traces errors through stack traces, reproduces failures, and finds root causes
-  before implementing targeted fixes. The go-to agent when something is broken — whether a test is
-  failing, an exception is being thrown, or behavior is silently wrong. Combines deep investigation
-  with the ability to make precise corrective edits.
-  <example>User says: "why is this failing" — debugger reads the error, traces the stack, identifies root cause, and fixes it</example>
-  <example>User says: "I'm getting an error when I run this" — debugger reproduces the error, gathers evidence, forms a hypothesis, and applies a minimal fix</example>
-  <example>Proactive: after test failures are detected, debugger is dispatched to diagnose the earliest failure in the chain, fix the root cause, and verify the rest of the suite recovers</example>
+description: Diagnoses bugs, traces errors through stack traces, reproduces failures, and finds root causes before implementing targeted fixes.
 tools: Read, Edit, Bash, Glob, Grep
 model: MiniMax-M2.5
 color: yellow

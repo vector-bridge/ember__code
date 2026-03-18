@@ -1,7 +1,7 @@
 """Ember Code TUI — main application.
 
 Thin shell that composes Textual widgets and delegates logic to
-``ConversationView``, ``StatusTracker``, ``ExecutionManager``,
+``ConversationView``, ``StatusTracker``, ``RunController``,
 ``HITLHandler``, and ``SessionManager``.
 """
 
@@ -23,12 +23,13 @@ from ember_code.config.settings import Settings, load_settings
 from ember_code.session import Session
 from ember_code.tui.command_handler import CommandHandler, CommandResult
 from ember_code.tui.conversation_view import ConversationView
-from ember_code.tui.execution_manager import ExecutionManager
 from ember_code.tui.hitl_handler import HITLHandler
+from ember_code.tui.run_controller import RunController
 from ember_code.tui.input_handler import InputHandler, shortcut_label
 from ember_code.tui.session_manager import SessionManager
 from ember_code.tui.status_tracker import StatusTracker
 from ember_code.tui.widgets import (
+    LoginWidget,
     MessageWidget,
     ModelPickerWidget,
     PromptInput,
@@ -46,7 +47,6 @@ class EmberApp(App):
     TITLE = "Ember Code"
     SUB_TITLE = f"v{__version__}"
     ALLOW_SELECT = True
-
 
     CSS = """
     * {
@@ -203,9 +203,21 @@ class EmberApp(App):
 
         # Managers initialised in on_mount once widgets exist
         self._status: StatusTracker | None = None
-        self._execution: ExecutionManager | None = None
+        self._controller: RunController | None = None
         self._hitl: HITLHandler | None = None
         self._sessions: SessionManager | None = None
+
+    # ── Public accessors ────────────────────────────────────────────
+
+    @property
+    def session(self) -> "Session | None":
+        """Public accessor for the current session."""
+        return self._session
+
+    @property
+    def command_handler(self) -> "CommandHandler | None":
+        """Public accessor for the command handler."""
+        return self._command_handler
 
     # ── Compose / Mount ───────────────────────────────────────────
 
@@ -213,14 +225,19 @@ class EmberApp(App):
     def _get_full_name() -> str:
         """Get the user's full name from the system."""
         import subprocess
+
         try:
             if sys.platform == "darwin":
                 result = subprocess.run(
-                    ["id", "-F"], capture_output=True, text=True, timeout=2,
+                    ["id", "-F"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
                 )
                 if result.returncode == 0 and result.stdout.strip():
                     return result.stdout.strip()
             import pwd
+
             return pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0] or os.getlogin()
         except Exception:
             try:
@@ -279,8 +296,12 @@ class EmberApp(App):
             with Horizontal(id="prompt-row"):
                 yield Static("> ", id="prompt-indicator")
                 yield PromptInput(
-                    "", id="user-input", compact=True, language=None,
-                    soft_wrap=True, show_line_numbers=False,
+                    "",
+                    id="user-input",
+                    compact=True,
+                    language=None,
+                    soft_wrap=True,
+                    show_line_numbers=False,
                     highlight_cursor_line=False,
                     placeholder="Type a message or /help",
                 )
@@ -300,12 +321,8 @@ class EmberApp(App):
         self._conversation = ConversationView(container, display_config=self.settings.display)
 
         # Welcome banner — centered box + capabilities
-        await container.mount(
-            Static(self._build_welcome_content(), id="welcome-box")
-        )
-        await container.mount(
-            Static(self._build_capabilities_text(), id="capabilities")
-        )
+        await container.mount(Static(self._build_welcome_content(), id="welcome-box"))
+        await container.mount(Static(self._build_capabilities_text(), id="capabilities"))
 
         self._input_handler = InputHandler(self._session.skill_pool)
         self._command_handler = CommandHandler(self._session)
@@ -313,13 +330,15 @@ class EmberApp(App):
         # Initialise managers
         self._status = StatusTracker(self)
         from ember_code.config.tool_permissions import ToolPermissions
+
         self._tool_permissions = ToolPermissions()
         self._hitl = HITLHandler(self, self._conversation, self._tool_permissions)
-        self._execution = ExecutionManager(
+        self._controller = RunController(
             self,
             self._conversation,
             self._status,
             self._hitl,
+            session=self._session,
         )
         self._sessions = SessionManager(
             self,
@@ -340,14 +359,43 @@ class EmberApp(App):
 
         self.query_one("#user-input", PromptInput).focus()
 
-        # ── Check for updates (non-blocking) ─────────────────────────
+        # ── Non-blocking background init ──────────────────────────────
         asyncio.create_task(self._check_for_update())
+        asyncio.create_task(self._init_mcp_background())
 
         if self.initial_message:
             task = asyncio.create_task(
-                self._execution.process_message(self.initial_message),
+                self._controller.process_message(self.initial_message),
             )
-            self._execution.current_task = task
+            self._controller.set_current_task(task)
+
+    async def on_unmount(self) -> None:
+        """Clean up MCP connections on app exit.
+
+        For SSE connections, we redirect stderr to /dev/null before
+        abandoning them — asyncio's shutdown will try to finalize the
+        dangling async generators and print errors we can't suppress
+        any other way.
+        """
+        import os
+        import sys
+
+        if self._session:
+            has_sse = any(
+                c.type == "sse"
+                for c in self._session.mcp_manager.configs.values()
+            )
+            if has_sse and self._session.mcp_manager.list_connected():
+                # Redirect fd 2 → /dev/null BEFORE abandoning SSE clients.
+                # This silences asyncio's async generator finalization errors.
+                try:
+                    sys.stderr.flush()
+                    devnull_fd = os.open(os.devnull, os.O_WRONLY)
+                    os.dup2(devnull_fd, 2)
+                    os.close(devnull_fd)
+                except OSError:
+                    pass
+            await self._session.mcp_manager.disconnect_all()
 
     # ── Input events ──────────────────────────────────────────────
 
@@ -391,10 +439,10 @@ class EmberApp(App):
                 with contextlib.suppress(NoMatches):
                     self.query_one("#autocomplete", Static).display = False
                 task = asyncio.create_task(
-                    self._execution.process_message(submitted),
+                    self._controller.process_message(submitted),
                 )
-                if not self._execution.processing:
-                    self._execution.current_task = task
+                if not self._controller.processing:
+                    self._controller.set_current_task(task)
 
     async def on_key(self, event) -> None:
         try:
@@ -404,15 +452,13 @@ class EmberApp(App):
         if not input_widget.has_focus:
             return
 
-        if event.key == "up" and self._input_handler:
-            # Only history-navigate when cursor is on the first line
-            if input_widget.cursor_location[0] == 0:
-                entry = self._input_handler.on_up(input_widget.text)
-                if entry is not None:
-                    event.prevent_default()
-                    input_widget.clear()
-                    input_widget.insert(entry)
-                    return
+        if event.key == "up" and self._input_handler and input_widget.cursor_location[0] == 0:
+            entry = self._input_handler.on_up(input_widget.text)
+            if entry is not None:
+                event.prevent_default()
+                input_widget.clear()
+                input_widget.insert(entry)
+                return
 
         if event.key == "down" and self._input_handler:
             # Only history-navigate when cursor is on the last line
@@ -427,7 +473,7 @@ class EmberApp(App):
 
     # ── Command result rendering ──────────────────────────────────
 
-    def _render_command_result(self, result: CommandResult) -> None:
+    def render_command_result(self, result: CommandResult) -> None:
         if result.action == "quit":
             self.exit()
         elif result.action == "clear":
@@ -437,6 +483,8 @@ class EmberApp(App):
             asyncio.create_task(self._sessions.show_picker())
         elif result.action == "model":
             self._show_model_picker()
+        elif result.action == "login":
+            self._show_login()
         elif result.kind == "markdown":
             self._conversation.append_markdown(result.content)
         elif result.kind == "info":
@@ -474,11 +522,28 @@ class EmberApp(App):
     def _on_model_cancelled(self, _event: ModelPickerWidget.Cancelled) -> None:
         self.query_one("#user-input", PromptInput).focus()
 
+    # ── Login ────────────────────────────────────────────────────────
+
+    def _show_login(self) -> None:
+        api_url = self.settings.api_url
+        widget = LoginWidget(api_url=api_url)
+        self.mount(widget)
+        widget.focus()
+
+    @on(LoginWidget.LoggedIn)
+    def _on_logged_in(self, event: LoginWidget.LoggedIn) -> None:
+        self._conversation.append_info(f"Logged in as {event.email}")
+        self.query_one("#user-input", PromptInput).focus()
+
+    @on(LoginWidget.Cancelled)
+    def _on_login_cancelled(self, _event: LoginWidget.Cancelled) -> None:
+        self.query_one("#user-input", PromptInput).focus()
+
     # ── Queue panel events ─────────────────────────────────────────
 
     @on(QueuePanel.ItemDeleted)
     def _on_queue_item_deleted(self, event: QueuePanel.ItemDeleted) -> None:
-        removed = self._execution.dequeue_at(event.index)
+        removed = self._controller.dequeue_at(event.index)
         if removed:
             short = removed if len(removed) <= 40 else removed[:37] + "..."
             self._conversation.append_info(f"Removed from queue: {short}")
@@ -486,7 +551,7 @@ class EmberApp(App):
     @on(QueuePanel.ItemEditRequested)
     def _on_queue_item_edit(self, event: QueuePanel.ItemEditRequested) -> None:
         # Remove the item from the queue and put its text into the input box
-        self._execution.dequeue_at(event.index)
+        self._controller.dequeue_at(event.index)
         input_widget = self.query_one("#user-input", PromptInput)
         input_widget.clear()
         input_widget.insert(event.text)
@@ -506,7 +571,7 @@ class EmberApp(App):
     def action_toggle_expand_all(self) -> None:
         container = self._conversation.container
         widgets = container.query(MessageWidget)
-        long_widgets = [w for w in widgets if w._is_long]
+        long_widgets = [w for w in widgets if w.is_long]
         if not long_widgets:
             return
         any_collapsed = any(not w.expanded for w in long_widgets)
@@ -517,7 +582,7 @@ class EmberApp(App):
         """Toggle queue panel visibility and focus."""
         try:
             panel = self.query_one("#queue-panel", QueuePanel)
-            if panel.has_class("-hidden") and self._execution.queue_size > 0:
+            if panel.has_class("-hidden") and self._controller.queue_size > 0:
                 panel.remove_class("-hidden")
                 panel.focus()
             else:
@@ -532,6 +597,15 @@ class EmberApp(App):
         )
         state = "on" if self._session.settings.display.show_routing else "off"
         self._conversation.append_info(f"Verbose mode: {state}")
+
+    async def _init_mcp_background(self) -> None:
+        """Connect user-configured MCP servers in the background."""
+        try:
+            await self._session.ensure_mcp()
+            for name, connected in self._session.get_mcp_status():
+                self._status.set_ide_status(name, connected)
+        except Exception:
+            pass
 
     async def _check_for_update(self) -> None:
         """Check for a newer CLI version and update the bar if available."""
@@ -564,6 +638,7 @@ class EmberApp(App):
 
     def _start_tip_rotation(self) -> None:
         import random
+
         try:
             tip_bar = self.query_one("#tip-bar", TipBar)
             tip_bar.set_tip(random.choice(self._TIPS))
@@ -573,6 +648,7 @@ class EmberApp(App):
 
     def _rotate_tip(self) -> None:
         import random
+
         try:
             tip_bar = self.query_one("#tip-bar", TipBar)
             tip_bar.set_tip(random.choice(self._TIPS))
@@ -599,4 +675,4 @@ class EmberApp(App):
         self.screen.refresh(layout=True)
 
     def action_cancel(self) -> None:
-        self._execution.cancel()
+        self._controller.cancel()

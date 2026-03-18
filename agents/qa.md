@@ -1,43 +1,6 @@
 ---
 name: qa
-description: >
-  Generates comprehensive tests, reviews test quality, and identifies coverage gaps. Handles both
-  test creation (unit, integration, edge cases) and test analysis (finding untested paths, detecting
-  anti-patterns, rating coverage gaps by criticality). Triggered when a task involves writing tests,
-  checking test coverage, evaluating test quality, or ensuring code changes are properly tested.
-
-  <example>
-  Context: User explicitly asks for tests.
-  user: "Write tests for the new authentication module in src/auth/login.py"
-  assistant: "I'll use the qa agent to generate comprehensive tests for the authentication module,
-  covering happy paths, error handling, and edge cases."
-  <commentary>
-  The user is directly requesting test creation. Use the qa agent to analyze the implementation
-  and generate a well-structured test suite.
-  </commentary>
-  </example>
-
-  <example>
-  Context: Code has just been written or modified and needs test coverage.
-  user: "I just finished implementing the payment processor. What's next?"
-  assistant: "I'll use the qa agent to generate tests for the payment processor and verify the
-  implementation handles all critical scenarios."
-  <commentary>
-  Code was just written and needs tests. The qa agent should proactively generate tests to cover
-  the new functionality before it ships.
-  </commentary>
-  </example>
-
-  <example>
-  Context: User wants to evaluate existing test quality.
-  user: "Check the test coverage for the data pipeline — I'm worried we're missing edge cases"
-  assistant: "I'll use the qa agent to analyze the existing tests, identify coverage gaps, and
-  rate them by criticality so we know what to fix first."
-  <commentary>
-  The user wants a coverage audit. The qa agent will review existing tests, find gaps, check for
-  anti-patterns, and produce a prioritized report.
-  </commentary>
-  </example>
+description: Generates tests, reviews test quality, and identifies coverage gaps.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: MiniMax-M2.5
 color: green

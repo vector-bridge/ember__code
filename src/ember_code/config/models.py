@@ -2,7 +2,6 @@
 
 import logging
 import os
-import subprocess
 from typing import Any
 
 import httpx
@@ -97,6 +96,7 @@ class ModelRegistry:
         if name == "gemini":
             try:
                 from agno.models.google import Gemini
+
                 cls.PROVIDERS["gemini"] = Gemini
                 return Gemini
             except ImportError:
@@ -191,14 +191,17 @@ class ModelRegistry:
 
     @staticmethod
     def _resolve_api_key(entry: dict[str, Any]) -> str | None:
-        """Resolve API key: direct value, env var, or command."""
-        if "api_key" in entry:
-            return entry["api_key"]
-        if "api_key_env" in entry:
-            return os.environ.get(entry["api_key_env"])
-        if "api_key_cmd" in entry:
-            result = subprocess.run(
-                entry["api_key_cmd"], shell=True, capture_output=True, text=True
-            )
-            return result.stdout.strip() if result.returncode == 0 else None
+        """Resolve API key: direct value, env var, command, or stored credentials."""
+        from ember_code.config.api_keys import resolve_api_key
+
+        key = resolve_api_key(entry)
+        if key:
+            return key
+
+        # Fall back to stored login credentials for Ember-hosted models
+        if "ignite-ember.sh" in entry.get("url", ""):
+            from ember_code.auth.credentials import get_access_token
+
+            return get_access_token()
+
         return None

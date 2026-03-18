@@ -1,12 +1,6 @@
 ---
 name: editor
-description: >
-  Creates and modifies code files with minimal focused changes. The primary coding agent — handles
-  implementation, bug fixes, refactoring, and all file-level code modifications. Triggered when a
-  task requires writing new code, editing existing files, fixing bugs, implementing features,
-  updating imports, or making any direct changes to source files. This is the default agent for
-  any work that touches code. Do NOT trigger for read-only tasks like code review, exploration,
-  or documentation lookup — use explorer or reviewer for those.
+description: Creates and modifies code files. The primary coding agent for implementation, bug fixes, and refactoring.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: MiniMax-M2.5
 color: blue

@@ -59,7 +59,7 @@ class StorageConfig(BaseModel):
     session_db: str = "~/.ember/sessions.db"
     memory_db: str = "~/.ember/memory.db"
     audit_log: str = "~/.ember/audit.log"
-    max_history_runs: int = 10
+    max_history_runs: int = 3
 
 
 class ContextConfig(BaseModel):
@@ -141,6 +141,10 @@ class GuardrailsConfig(BaseModel):
     moderation: bool = False
 
 
+class AuthConfig(BaseModel):
+    credentials_file: str = "~/.ember/credentials.json"
+
+
 class DisplayConfig(BaseModel):
     markdown: bool = True
     show_tool_calls: bool = True
@@ -171,6 +175,7 @@ class Settings(BaseModel):
     guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
     skills: SkillsConfig = Field(default_factory=SkillsConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
     display: DisplayConfig = Field(default_factory=DisplayConfig)
 
 

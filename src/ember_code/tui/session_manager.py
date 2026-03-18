@@ -26,7 +26,7 @@ class SessionManager:
 
     @property
     def _session(self) -> "Session":
-        return self._app._session
+        return self._app.session
 
     def clear(self) -> None:
         self._conversation.clear()

@@ -1,4 +1,4 @@
-"""Tests for TUI handler classes: StreamHandler, InputHandler, CommandHandler, ExecutionManager."""
+"""Tests for TUI handler classes: InputHandler, CommandHandler, RunController queue, QueueInjectorHook."""
 
 import sys
 
@@ -11,73 +11,32 @@ from ember_code.tui.input_handler import (
     InputHandler,
     shortcut_label,
 )
-from ember_code.tui.stream_handler import StreamHandler, TokenMetrics
-
-# ── TokenMetrics ──────────────────────────────────────────────────
+from ember_code.tui.format_helpers import format_tool_args
 
 
-class TestTokenMetrics:
-    def test_initial_zero(self):
-        m = TokenMetrics()
-        assert m.input_tokens == 0
-        assert m.output_tokens == 0
-        assert m.total == 0
-
-    def test_total(self):
-        m = TokenMetrics()
-        m.input_tokens = 100
-        m.output_tokens = 50
-        assert m.total == 150
-
-    def test_accumulate_from_metrics_skips_if_already_populated(self):
-        m = TokenMetrics()
-        m.input_tokens = 100
-        m.output_tokens = 50
-
-        class FakeMetrics:
-            input_tokens = 999
-            output_tokens = 888
-
-        m.accumulate_from_metrics(FakeMetrics())
-        # Should NOT overwrite since input_tokens > 0
-        assert m.input_tokens == 100
-        assert m.output_tokens == 50
-
-    def test_accumulate_from_metrics_populates_if_empty(self):
-        m = TokenMetrics()
-
-        class FakeMetrics:
-            input_tokens = 200
-            output_tokens = 100
-
-        m.accumulate_from_metrics(FakeMetrics())
-        assert m.input_tokens == 200
-        assert m.output_tokens == 100
-
-
-# ── StreamHandler._format_tool_args ──────────────────────────────
+# ── format_tool_args ─────────────────────────────────────────────
 
 
 class TestFormatToolArgs:
     def test_none_args(self):
-        assert StreamHandler._format_tool_args(None) == ""
+        assert format_tool_args(None) == ""
 
     def test_empty_dict(self):
-        assert StreamHandler._format_tool_args({}) == ""
+        assert format_tool_args({}) == ""
 
     def test_simple_args(self):
-        result = StreamHandler._format_tool_args({"path": "main.py", "line": 42})
+        result = format_tool_args({"path": "main.py", "line": 42})
         assert "path=main.py" in result
         assert "line=42" in result
 
     def test_long_value_truncated(self):
-        result = StreamHandler._format_tool_args({"content": "a" * 50})
+        result = format_tool_args({"content": "a" * 50})
         assert "..." in result
         assert len(result) < 50
 
     def test_max_three_args(self):
         args = {f"key{i}": f"val{i}" for i in range(5)}
-        result = StreamHandler._format_tool_args(args)
+        result = format_tool_args(args)
         # Should only have 3 key=val pairs
         assert result.count("=") == 3
 
@@ -432,71 +391,71 @@ class TestCommandHandler:
         assert "Unknown" in result.content
 
 
-# ── ExecutionManager queue ───────────────────────────────────────
+# ── RunController queue ──────────────────────────────────────────
 
 
-class TestExecutionManagerQueue:
-    """Tests for the message queue in ExecutionManager."""
+class TestRunControllerQueue:
+    """Tests for the message queue in RunController."""
 
-    def _make_em(self):
-        from ember_code.tui.execution_manager import ExecutionManager
+    def _make_controller(self):
+        from ember_code.tui.run_controller import RunController
 
-        em = ExecutionManager.__new__(ExecutionManager)
-        em._queue = []
-        em._app = None  # _sync_queue_panel will silently fail
-        return em
+        ctrl = RunController.__new__(RunController)
+        ctrl._queue = []
+        ctrl._processing = False
+        ctrl._current_task = None
+        ctrl._queue_hook = None
+        ctrl._app = None
+        ctrl._conversation = None
+        ctrl._status = None
+        ctrl._hitl = None
+        ctrl._session = None
+        ctrl._stream_widget = None
+        ctrl._spinner = None
+        ctrl._run_input_tokens = 0
+        ctrl._run_output_tokens = 0
+        ctrl._streamed = False
+        return ctrl
 
     def test_enqueue_returns_position(self):
-        em = self._make_em()
-        assert em.enqueue("first") == 1
-        assert em.enqueue("second") == 2
-        assert em.queue_size == 2
+        ctrl = self._make_controller()
+        # enqueue calls _sync_queue_panel which needs _app, so patch it
+        ctrl._sync_queue_panel = lambda: None
+        assert ctrl.enqueue("first") == 1
+        assert ctrl.enqueue("second") == 2
+        assert ctrl.queue_size == 2
 
     def test_enqueue_no_limit(self):
-        em = self._make_em()
+        ctrl = self._make_controller()
+        ctrl._sync_queue_panel = lambda: None
         for i in range(100):
-            em.enqueue(f"msg-{i}")
-        assert em.queue_size == 100
+            ctrl.enqueue(f"msg-{i}")
+        assert ctrl.queue_size == 100
 
     def test_dequeue_at(self):
-        em = self._make_em()
-        em.enqueue("a")
-        em.enqueue("b")
-        em.enqueue("c")
-        removed = em.dequeue_at(1)
+        ctrl = self._make_controller()
+        ctrl._sync_queue_panel = lambda: None
+        ctrl.enqueue("a")
+        ctrl.enqueue("b")
+        ctrl.enqueue("c")
+        removed = ctrl.dequeue_at(1)
         assert removed == "b"
-        assert em.queue_size == 2
-        assert em._queue == ["a", "c"]
+        assert ctrl.queue_size == 2
+        assert ctrl._queue == ["a", "c"]
 
     def test_dequeue_at_invalid(self):
-        em = self._make_em()
-        em.enqueue("a")
-        assert em.dequeue_at(5) is None
-        assert em.dequeue_at(-1) is None
-        assert em.queue_size == 1
-
-    def test_edit_at(self):
-        em = self._make_em()
-        em.enqueue("old message")
-        assert em.edit_at(0, "new message") is True
-        assert em._queue[0] == "new message"
-
-    def test_edit_at_invalid(self):
-        em = self._make_em()
-        assert em.edit_at(0, "text") is False
-
-    def test_clear_queue(self):
-        em = self._make_em()
-        em.enqueue("a")
-        em.enqueue("b")
-        em.clear_queue()
-        assert em.queue_size == 0
+        ctrl = self._make_controller()
+        ctrl._sync_queue_panel = lambda: None
+        ctrl.enqueue("a")
+        assert ctrl.dequeue_at(5) is None
+        assert ctrl.dequeue_at(-1) is None
+        assert ctrl.queue_size == 1
 
     def test_queue_size_property(self):
-        em = self._make_em()
-        assert em.queue_size == 0
-        em._queue.append("x")
-        assert em.queue_size == 1
+        ctrl = self._make_controller()
+        assert ctrl.queue_size == 0
+        ctrl._queue.append("x")
+        assert ctrl.queue_size == 1
 
 
 # ── QueueInjectorHook ────────────────────────────────────────────
@@ -506,7 +465,7 @@ class TestQueueInjectorHook:
     """Tests for the tool hook that injects queued messages mid-run."""
 
     def _make_hook(self, queue=None, on_inject=None, on_queue_changed=None):
-        from ember_code.tui.queue_hook import QueueInjectorHook
+        from ember_code.queue_hook import QueueInjectorHook
 
         return QueueInjectorHook(
             queue=queue if queue is not None else [],
@@ -514,28 +473,25 @@ class TestQueueInjectorHook:
             on_queue_changed=on_queue_changed,
         )
 
-    @pytest.mark.asyncio
-    async def test_calls_next_func_and_returns_result(self):
+    def test_calls_next_func_and_returns_result(self):
         hook = self._make_hook()
 
-        async def next_func(**kwargs):
+        def next_func(**kwargs):
             return "tool_result"
 
-        result = await hook("my_tool", None, {}, next_func)
+        result = hook(name="my_tool", func=next_func, args={})
         assert result == "tool_result"
 
-    @pytest.mark.asyncio
-    async def test_calls_sync_next_func(self):
+    def test_calls_sync_next_func(self):
         hook = self._make_hook()
 
         def next_func(**kwargs):
             return "sync_result"
 
-        result = await hook("my_tool", None, {}, next_func)
+        result = hook(name="my_tool", func=next_func, args={})
         assert result == "sync_result"
 
-    @pytest.mark.asyncio
-    async def test_injects_queued_messages(self):
+    def test_injects_queued_messages(self):
         queue = ["hello from user"]
 
         class FakeAgent:
@@ -544,18 +500,17 @@ class TestQueueInjectorHook:
         agent = FakeAgent()
         hook = self._make_hook(queue=queue)
 
-        async def next_func(**kwargs):
+        def next_func(**kwargs):
             return "ok"
 
-        await hook("tool", None, {}, next_func, agent=agent)
+        hook(name="tool", func=next_func, args={}, agent=agent)
 
         assert agent.additional_input is not None
         assert len(agent.additional_input) == 1
         assert "hello from user" in agent.additional_input[0].content
         assert queue == []  # drained
 
-    @pytest.mark.asyncio
-    async def test_clears_previous_injection_on_next_call(self):
+    def test_clears_previous_injection_on_next_call(self):
         queue = ["msg1"]
 
         class FakeAgent:
@@ -564,19 +519,18 @@ class TestQueueInjectorHook:
         agent = FakeAgent()
         hook = self._make_hook(queue=queue)
 
-        async def next_func(**kwargs):
+        def next_func(**kwargs):
             return "ok"
 
         # First call: injects msg1
-        await hook("tool", None, {}, next_func, agent=agent)
+        hook(name="tool", func=next_func, args={}, agent=agent)
         assert agent.additional_input is not None
 
         # Second call (no new messages): clears previous injection
-        await hook("tool", None, {}, next_func, agent=agent)
+        hook(name="tool", func=next_func, args={}, agent=agent)
         assert agent.additional_input is None
 
-    @pytest.mark.asyncio
-    async def test_on_inject_callback(self):
+    def test_on_inject_callback(self):
         injected = []
         queue = ["a", "b"]
         hook = self._make_hook(queue=queue, on_inject=lambda msg: injected.append(msg))
@@ -584,14 +538,13 @@ class TestQueueInjectorHook:
         class FakeAgent:
             additional_input = None
 
-        async def next_func(**kwargs):
+        def next_func(**kwargs):
             return "ok"
 
-        await hook("tool", None, {}, next_func, agent=FakeAgent())
+        hook(name="tool", func=next_func, args={}, agent=FakeAgent())
         assert injected == ["a", "b"]
 
-    @pytest.mark.asyncio
-    async def test_on_queue_changed_callback(self):
+    def test_on_queue_changed_callback(self):
         changed_count = []
         queue = ["x"]
         hook = self._make_hook(
@@ -602,21 +555,20 @@ class TestQueueInjectorHook:
         class FakeAgent:
             additional_input = None
 
-        async def next_func(**kwargs):
+        def next_func(**kwargs):
             return "ok"
 
-        await hook("tool", None, {}, next_func, agent=FakeAgent())
+        hook(name="tool", func=next_func, args={}, agent=FakeAgent())
         assert len(changed_count) == 1
 
-    @pytest.mark.asyncio
-    async def test_no_agent_skips_injection(self):
+    def test_no_agent_skips_injection(self):
         queue = ["msg"]
         hook = self._make_hook(queue=queue)
 
-        async def next_func(**kwargs):
+        def next_func(**kwargs):
             return "ok"
 
-        result = await hook("tool", None, {}, next_func, agent=None)
+        result = hook(name="tool", func=next_func, args={}, agent=None)
         assert result == "ok"
         assert queue == ["msg"]  # not drained without agent
 
@@ -627,7 +579,7 @@ class TestQueueInjectorHook:
         assert hook._has_injected is False
 
     def test_create_queue_hook_factory(self):
-        from ember_code.tui.queue_hook import create_queue_hook
+        from ember_code.queue_hook import create_queue_hook
 
         queue = []
         hook = create_queue_hook(queue)

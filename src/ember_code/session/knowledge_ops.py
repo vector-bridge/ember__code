@@ -157,9 +157,10 @@ class SessionKnowledgeManager:
         count = 0
         try:
             if hasattr(self.knowledge, "vector_db") and self.knowledge.vector_db:
-                col = self.knowledge.vector_db._collection
-                if col:
-                    count = col.count()
+                from ember_code.knowledge.vector_store import VectorStoreAdapter
+
+                adapter = VectorStoreAdapter(self.knowledge.vector_db)
+                count = adapter.count()
         except Exception:
             pass
 

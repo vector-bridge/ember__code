@@ -49,6 +49,10 @@ class CommandResult:
     def model(cls) -> "CommandResult":
         return cls(kind="action", action="model")
 
+    @classmethod
+    def login(cls) -> "CommandResult":
+        return cls(kind="action", action="login")
+
 
 class CommandHandler:
     """Handles slash commands, decoupled from the TUI rendering.
@@ -98,6 +102,9 @@ class CommandHandler:
             "- `/memory optimize` — consolidate memories\n"
             "- `/model [name]` — switch model (picker or direct)\n"
             "- `/config` — show current settings\n"
+            "- `/login` — authenticate with Ember Cloud\n"
+            "- `/logout` — clear stored credentials\n"
+            "- `/whoami` — show current auth status\n"
             "\n## Skills\n"
             f"{skills_text or '(no skills loaded)'}\n"
             f"\n{SHORTCUT_HELP}"
@@ -221,9 +228,7 @@ class CommandHandler:
             registry = self._session.settings.models.registry
             if name not in registry:
                 available = ", ".join(sorted(registry.keys()))
-                return CommandResult.error(
-                    f"Unknown model: '{name}'. Available: {available}"
-                )
+                return CommandResult.error(f"Unknown model: '{name}'. Available: {available}")
             self._session.settings.models.default = name
             return CommandResult.info(f"Switched to model: {name}")
         # No args: show picker
@@ -231,9 +236,20 @@ class CommandHandler:
 
     async def _cmd_config(self, _args: str) -> "CommandResult":
         s = self._session.settings
+
+        # Auth status line
+        from ember_code.auth.credentials import is_token_expired, load_credentials
+
+        creds = load_credentials()
+        if creds and not is_token_expired(creds):
+            auth_status = creds.email or "logged in"
+        else:
+            auth_status = "not logged in"
+
         return CommandResult.markdown(
             "## Configuration\n"
             f"- **Model:** {s.models.default}\n"
+            f"- **Auth:** {auth_status}\n"
             f"- **Permissions:** file_write={s.permissions.file_write}, "
             f"shell={s.permissions.shell_execute}\n"
             f"- **Storage:** {s.storage.backend}\n"
@@ -252,6 +268,31 @@ class CommandHandler:
             f"- **Max depth:** {s.orchestration.max_nesting_depth}\n"
             f"- **Session:** {self._session.session_id}\n"
         )
+
+    async def _cmd_login(self, _args: str) -> "CommandResult":
+        return CommandResult.login()
+
+    async def _cmd_logout(self, _args: str) -> "CommandResult":
+        from ember_code.auth.credentials import clear_credentials, load_credentials
+
+        creds = load_credentials()
+        clear_credentials()
+        if creds:
+            return CommandResult.info(f"Logged out ({creds.email}).")
+        return CommandResult.info("Not logged in.")
+
+    async def _cmd_whoami(self, _args: str) -> "CommandResult":
+        from ember_code.auth.credentials import is_token_expired, load_credentials
+
+        creds = load_credentials()
+        if creds is None:
+            return CommandResult.info("Not logged in. Use /login to authenticate.")
+        if is_token_expired(creds):
+            return CommandResult.info(
+                f"Session expired for {creds.email}. Use /login to re-authenticate."
+            )
+        expires = creds.expires_at[:19] if creds.expires_at else "unknown"
+        return CommandResult.info(f"Logged in as {creds.email} (expires: {expires})")
 
     async def _handle_skill(self, stripped: str) -> "CommandResult":
         """Try to match and execute a skill command."""
@@ -280,4 +321,7 @@ class CommandHandler:
         "/knowledge": _cmd_knowledge,
         "/config": _cmd_config,
         "/model": _cmd_model,
+        "/login": _cmd_login,
+        "/logout": _cmd_logout,
+        "/whoami": _cmd_whoami,
     }

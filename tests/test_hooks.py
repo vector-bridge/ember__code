@@ -116,13 +116,10 @@ class TestHookLoader:
 
 
 class TestHookExecutor:
-    def test_no_hooks_returns_continue(self):
+    @pytest.mark.asyncio
+    async def test_no_hooks_returns_continue(self):
         executor = HookExecutor({})
-        import asyncio
-
-        result = asyncio.get_event_loop().run_until_complete(
-            executor.execute("PreToolUse", {"tool": "Read"})
-        )
+        result = await executor.execute("PreToolUse", {"tool": "Read"})
         assert result.should_continue is True
 
     def test_get_matching_hooks_no_matcher(self):

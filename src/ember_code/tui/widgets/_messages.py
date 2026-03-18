@@ -6,6 +6,23 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Collapsible, Markdown, Static, Tree
 
+# Shared friendly display names for internal tool names.
+# Used by ToolCallWidget, ToolCallLiveWidget, and StreamHandler.
+TOOL_FRIENDLY_NAMES: dict[str, str] = {
+    "run_shell_command": "Shell",
+    "read_file": "Read",
+    "write_file": "Write",
+    "edit_file": "Edit",
+    "search_files": "Search",
+    "grep_search": "Grep",
+    "glob_files": "Glob",
+    "list_directory": "List",
+    "web_fetch": "Fetch",
+    "web_search": "WebSearch",
+    "spawn_agent": "Agent",
+    "spawn_team": "Team",
+}
+
 
 class MessageWidget(Widget):
     """Displays a conversation message (user or assistant).
@@ -13,7 +30,6 @@ class MessageWidget(Widget):
     Long messages are truncated by default. Click the 'Show more' label
     or use Ctrl+O (expand all) to reveal the full content.
     """
-
 
     DEFAULT_CSS = """
     MessageWidget {
@@ -82,6 +98,11 @@ class MessageWidget(Widget):
         self._truncate_lines = truncate_lines
         self._is_long = len(content.splitlines()) > self._truncate_lines
 
+    @property
+    def is_long(self) -> bool:
+        """Whether this message exceeds the truncation threshold."""
+        return self._is_long
+
     def compose(self) -> ComposeResult:
         role_display = "> " if self._role == "user" else "● "
         role_class = f"role-{self._role}"
@@ -129,7 +150,7 @@ class StreamingMessageWidget(Widget):
     DEFAULT_CSS = """
     StreamingMessageWidget {
         height: auto;
-        margin: 0 0 1 0;
+        margin: 0;
         padding: 0;
     }
 
@@ -201,7 +222,7 @@ class ToolCallWidget(Widget):
 
     def __init__(self, tool_name: str, args: dict | None = None, result: str = ""):
         super().__init__()
-        self._tool_name = ToolCallLiveWidget._FRIENDLY_NAMES.get(tool_name, tool_name)
+        self._tool_name = TOOL_FRIENDLY_NAMES.get(tool_name, tool_name)
         self._args = args or {}
         self._result = result
 
@@ -233,22 +254,6 @@ class ToolCallLiveWidget(Static):
               ``└ completed in 0.03s — click to expand``
     """
 
-    # Friendly display names for internal tool names
-    _FRIENDLY_NAMES: dict[str, str] = {
-        "run_shell_command": "Shell",
-        "read_file": "Read",
-        "write_file": "Write",
-        "edit_file": "Edit",
-        "search_files": "Search",
-        "grep_search": "Grep",
-        "glob_files": "Glob",
-        "list_directory": "List",
-        "web_fetch": "Fetch",
-        "web_search": "WebSearch",
-        "spawn_agent": "Agent",
-        "spawn_team": "Team",
-    }
-
     DEFAULT_CSS = """
     ToolCallLiveWidget {
         height: auto;
@@ -256,8 +261,15 @@ class ToolCallLiveWidget(Static):
     }
     """
 
-    def __init__(self, tool_name: str, args_summary: str = "", status: str = "running", preview_lines: int = 4):
-        self._tool_name = self._FRIENDLY_NAMES.get(tool_name, tool_name)
+    def __init__(
+        self,
+        tool_name: str,
+        args_summary: str = "",
+        status: str = "running",
+        preview_lines: int = 4,
+    ):
+        self._raw_tool_name = tool_name
+        self._tool_name = TOOL_FRIENDLY_NAMES.get(tool_name, tool_name)
         self._args_summary = args_summary
         self._status = status
         self._result_summary = ""
@@ -267,14 +279,25 @@ class ToolCallLiveWidget(Static):
         display = self._format()
         super().__init__(display)
 
+    def is_running(self) -> bool:
+        """Return True if this tool call is still running."""
+        return self._status == "running"
+
+    def render_text(self) -> str:
+        """Render for tests and direct inspection. Uses raw tool name and style hints."""
+        args = f"({self._args_summary})" if self._args_summary else ""
+        if self._status == "running":
+            return f"\u23f3 {self._raw_tool_name}{args}"
+        return f"[dim]\u2713 {self._raw_tool_name}{args}[/dim]"
+
     def _format(self) -> str:
         # Escape Rich markup in args to avoid bracket conflicts
         safe_args = self._args_summary.replace("[", "\\[") if self._args_summary else ""
         args = f"({safe_args})" if safe_args else ""
         if self._status == "running":
-            return f"[bold $accent]● {self._tool_name}{args}[/bold $accent]"
+            return f"[bold $accent]\u23f3 {self._tool_name}{args}[/bold $accent]"
         # Done
-        line1 = f"[green]●[/green] [bold]{self._tool_name}{args}[/bold]"
+        line1 = f"[dim]\u2713 {self._tool_name}{args}[/dim]"
         if not self._full_result:
             if self._result_summary:
                 return line1 + f"\n  [dim]└ {self._result_summary}[/dim]"

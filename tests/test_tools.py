@@ -50,7 +50,7 @@ class TestToolRegistry:
 
     def test_register_custom_tool(self):
         reg = ToolRegistry()
-        reg.register("Custom", lambda: "custom_instance")
+        reg.register("Custom", lambda confirm=False: "custom_instance")
         tools = reg.resolve(["Custom"])
         assert tools == ["custom_instance"]
 

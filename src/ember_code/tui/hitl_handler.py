@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from ember_code.config.tool_permissions import FUNC_TO_TOOL, ToolPermissions
 from ember_code.tui.widgets import PermissionDialog
-from ember_code.tui.widgets._messages import ToolCallLiveWidget
+from ember_code.tui.widgets._messages import TOOL_FRIENDLY_NAMES
 
 if TYPE_CHECKING:
     from ember_code.tui.app import EmberApp
@@ -51,7 +51,7 @@ class HITLHandler:
         func_name = tool_exec.tool_name or ""
         tool_args = tool_exec.tool_args or {}
         tool_name = FUNC_TO_TOOL.get(func_name, func_name)
-        friendly = ToolCallLiveWidget._FRIENDLY_NAMES.get(func_name, tool_name)
+        friendly = TOOL_FRIENDLY_NAMES.get(func_name, tool_name)
 
         # Check argument-specific rules — might already be allowed
         level = self._permissions.check(tool_name, func_name, tool_args)
@@ -159,11 +159,13 @@ def _build_pattern_rule(tool_name: str, tool_args: dict) -> str:
     for key in ("path", "file_path"):
         if key in tool_args:
             from pathlib import Path
+
             parent = str(Path(str(tool_args[key])).parent)
             if parent and parent != ".":
                 return f"{tool_name}(path:{parent}/*)"
     if "url" in tool_args:
         from urllib.parse import urlparse
+
         domain = urlparse(str(tool_args["url"])).netloc
         if domain:
             return f"{tool_name}(domain:{domain})"

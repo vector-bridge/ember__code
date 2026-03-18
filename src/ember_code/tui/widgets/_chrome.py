@@ -9,6 +9,7 @@ from textual.widgets import Static
 
 from ember_code import __version__
 from ember_code.tui.widgets._constants import SPINNER_FRAMES
+from ember_code.tui.widgets._formatting import format_elapsed_time, format_token_count
 
 _QUIT_KEY = "Ctrl+D"
 
@@ -48,6 +49,7 @@ class SpinnerWidget(Static):
     def __init__(self, label: str = "Thinking"):
         self._label = label
         self._frame = 0
+        self._tokens: int = 0
         self._timer: Timer | None = None
         super().__init__(self._format())
 
@@ -57,6 +59,14 @@ class SpinnerWidget(Static):
     def _tick(self) -> None:
         self._frame = (self._frame + 1) % len(SPINNER_FRAMES)
         self.update(self._format())
+
+    def render_text(self) -> str:
+        """Plain-text render used by tests and direct inspection."""
+        frame = SPINNER_FRAMES[self._frame]
+        text = f"{frame} {self._label}..."
+        if self._tokens > 0:
+            text += f"  {format_token_count(self._tokens)} tokens"
+        return text
 
     def _format(self) -> str:
         frame = SPINNER_FRAMES[self._frame]
@@ -69,8 +79,7 @@ class SpinnerWidget(Static):
         self.update(self._format())
 
     def set_tokens(self, tokens: int) -> None:
-        """No-op — tokens are shown in the footer StatusBar."""
-        pass
+        self._tokens = tokens
 
     def stop(self) -> None:
         if self._timer:
@@ -93,7 +102,8 @@ class StatusBar(Widget):
         self._run_input: int = 0
         self._run_output: int = 0
         self._run_elapsed: float = 0.0
-        self._context_pct: int = 0
+        self._context_tokens: int = 0
+        self._max_context: int = 128_000
         self._running: bool = False
         self._run_timer: Timer | None = None
         self._last_elapsed: float = 0.0
@@ -101,6 +111,22 @@ class StatusBar(Widget):
         self._last_output: int = 0
         self._total_input: int = 0
         self._total_output: int = 0
+        self._ide_name: str = ""
+        self._ide_connected: bool = False
+
+    @property
+    def total_input_tokens(self) -> int:
+        return self._total_input
+
+    @property
+    def total_output_tokens(self) -> int:
+        return self._total_output
+
+    @property
+    def context_used_pct(self) -> float:
+        if self._max_context <= 0:
+            return 0.0
+        return self._context_tokens / self._max_context * 100
 
     def update_model(self, model: str) -> None:
         self._model_name = model
@@ -117,8 +143,15 @@ class StatusBar(Widget):
         self._run_output = output_tokens
         self._tick += 1
 
-    def set_context_usage(self, used_pct: int) -> None:
-        self._context_pct = used_pct
+    def set_context_usage(self, context_tokens: int, max_context: int) -> None:
+        self._context_tokens = context_tokens
+        self._max_context = max_context
+        self._tick += 1
+
+    def set_ide_status(self, name: str, connected: bool) -> None:
+        """Update the IDE MCP connection indicator."""
+        self._ide_name = name
+        self._ide_connected = connected
         self._tick += 1
 
     def start_run(self) -> None:
@@ -149,31 +182,11 @@ class StatusBar(Widget):
 
     @staticmethod
     def _fmt(n: int) -> str:
-        if n < 1000:
-            return str(n)
-        if n < 10_000:
-            return f"{n / 1000:.1f}k"
-        if n < 1_000_000:
-            return f"{n // 1000}k"
-        if n < 10_000_000:
-            return f"{n / 1_000_000:.1f}m"
-        if n < 1_000_000_000:
-            return f"{n // 1_000_000}m"
-        if n < 10_000_000_000:
-            return f"{n / 1_000_000_000:.1f}b"
-        if n < 1_000_000_000_000:
-            return f"{n // 1_000_000_000}b"
-        if n < 10_000_000_000_000:
-            return f"{n / 1_000_000_000_000:.1f}t"
-        return f"{n // 1_000_000_000_000}t"
+        return format_token_count(n)
 
     @staticmethod
     def _fmt_time(seconds: float) -> str:
-        if seconds < 60:
-            return f"{seconds:.1f}s"
-        minutes = int(seconds // 60)
-        secs = int(seconds % 60)
-        return f"{minutes}m {secs}s"
+        return format_elapsed_time(seconds)
 
     def render(self) -> Text:
         """Build the status line. Textual calls this whenever _tick changes."""
@@ -188,19 +201,22 @@ class StatusBar(Widget):
             # Show live elapsed time only while running
             parts.append(self._fmt_time(self._run_elapsed))
 
-        if self._total_input or self._total_output:
-            parts.append(
-                f"{self._fmt(self._total_input)}\u2191 "
-                f"{self._fmt(self._total_output)}\u2193"
-            )
-
-        if self._context_pct > 0:
+        # Context window state
+        if self._context_tokens:
+            pct = self._context_tokens / max(self._max_context, 1) * 100
             color = ""
-            if self._context_pct >= 80:
+            if pct >= 80:
                 color = "[red]"
-            elif self._context_pct >= 60:
+            elif pct >= 60:
                 color = "[yellow]"
-            parts.append(f"Context: {color}{self._context_pct}%{'[/]' if color else ''}")
+            close = "[/]" if color else ""
+            parts.append(f"Context: {color}{self._fmt(self._context_tokens)} ({pct:.1f}%){close}")
+
+        if self._ide_name:
+            if self._ide_connected:
+                parts.append(f"[green]\u25cf[/green] {self._ide_name}")
+            else:
+                parts.append(f"[red]\u25cb[/red] {self._ide_name}")
 
         if not parts:
             markup = f"[dim]{self._model_name or 'Ready'}[/dim]"

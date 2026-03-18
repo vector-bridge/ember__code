@@ -68,8 +68,6 @@ class TestAgentParser:
             "can_orchestrate: false\n"
             "max_turns: 5\n"
             "temperature: 0.7\n"
-            "mcp_servers:\n"
-            "  - github\n"
             "---\n"
             "Prompt body here.\n"
         )
@@ -78,7 +76,6 @@ class TestAgentParser:
         assert defn.can_orchestrate is False
         assert defn.max_turns == 5
         assert defn.temperature == 0.7
-        assert defn.mcp_servers == ["github"]
 
 
 class TestAgentPool:

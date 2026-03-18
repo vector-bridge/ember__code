@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+from ember_code.utils.response import extract_response_text
+
 if TYPE_CHECKING:
     from ember_code.config.settings import Settings
     from ember_code.pool import AgentPool
@@ -42,38 +44,20 @@ class SkillExecutor:
 
         try:
             response = await agent.arun(prompt)
-            if hasattr(response, "content"):
-                return str(response.content)
-            return str(response)
+            return extract_response_text(response)
         except Exception as e:
             return f"Error executing skill '{skill.name}': {e}"
 
     async def _execute_inline(self, prompt: str, skill: "SkillDefinition") -> str:
-        """Execute a skill inline using the orchestrator."""
-        from ember_code.orchestrator import Orchestrator
-        from ember_code.team_builder import build_team
-
-        orchestrator = Orchestrator(
-            pool_description=self.pool.describe(),
-            settings=self.settings,
-        )
-
-        plan = await orchestrator.plan(
-            message=f"Execute this skill:\n\n{prompt}",
-            context=f"Skill: {skill.name}\nDescription: {skill.description}",
-        )
-
-        executor = build_team(plan, self.pool)
+        """Execute a skill inline using the editor agent."""
+        try:
+            agent = self.pool.get("editor")
+        except KeyError:
+            return f"Error: No 'editor' agent available for skill '{skill.name}'."
 
         try:
-            if hasattr(executor, "arun"):
-                response = await executor.arun(prompt)
-            else:
-                response = executor.run(prompt)
-
-            if hasattr(response, "content"):
-                return str(response.content)
-            return str(response)
+            response = await agent.arun(prompt)
+            return extract_response_text(response)
         except Exception as e:
             return f"Error executing skill '{skill.name}': {e}"
 
