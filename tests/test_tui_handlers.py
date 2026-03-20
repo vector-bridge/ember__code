@@ -5,14 +5,13 @@ import sys
 import pytest
 
 from ember_code.tui.command_handler import CommandHandler, CommandResult
+from ember_code.tui.format_helpers import format_tool_args
 from ember_code.tui.input_handler import (
     SHORTCUT_HELP,
     AutocompleteProvider,
     InputHandler,
     shortcut_label,
 )
-from ember_code.tui.format_helpers import format_tool_args
-
 
 # ── format_tool_args ─────────────────────────────────────────────
 

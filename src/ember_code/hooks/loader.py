@@ -17,14 +17,17 @@ class HookLoader:
         """Load hooks from all settings files.
 
         Settings locations (merged, later wins):
-        1. ~/.ember/settings.json (global)
-        2. .ember/settings.json (project)
-        3. .ember/settings.local.json (project, gitignored)
+        1. ~/.ember/settings.json (user global defaults)
+        2. ~/.ember/settings.local.json (user local overrides)
+        3. .ember/settings.json (project overrides, committed)
+        4. .ember/settings.local.json (project local overrides, gitignored)
         """
         hooks: dict[str, list[HookDefinition]] = {}
 
+        home_ember = Path.home() / ".ember"
         paths = [
-            Path.home() / ".ember" / "settings.json",
+            home_ember / "settings.json",
+            home_ember / "settings.local.json",
             self.project_dir / ".ember" / "settings.json",
             self.project_dir / ".ember" / "settings.local.json",
         ]
@@ -55,13 +58,8 @@ class HookLoader:
                         headers=hook_data.get("headers", {}),
                         matcher=hook_data.get("matcher", ""),
                         timeout=hook_data.get("timeout", 10000),
+                        background=hook_data.get("background", False),
                     )
                     hooks.setdefault(event_name, []).append(hook)
         except (json.JSONDecodeError, OSError) as e:
             print(f"Warning: Failed to load hooks from {path}: {e}", file=sys.stderr)
-
-
-# Backward compatibility
-def load_hooks(project_dir: Path | None = None) -> dict[str, list[HookDefinition]]:
-    """Convenience wrapper around HookLoader.load()."""
-    return HookLoader(project_dir).load()

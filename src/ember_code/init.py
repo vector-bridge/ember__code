@@ -129,19 +129,21 @@ EMBER_MD_TEMPLATE = """\
 def initialize_project(project_dir: Path) -> bool:
     """Run one-time project initialization.
 
-    Creates the `.ember/` directory structure and copies built-in agents,
-    skills, and hooks. Returns True if initialization was performed,
-    False if it was already done.
+    Copies built-in agents, skills, and hooks into the project's `.ember/`
+    directory and creates a starter `ember.md`. Settings and the marker
+    file live in `~/.ember/` (user home, outside any repo).
 
-    This function is idempotent with respect to the marker file — once
-    `.ember/.initialized` exists, this is a no-op forever.
+    This function is idempotent — once `~/.ember/.initialized` exists,
+    this is a no-op forever.
     """
-    ember_dir = project_dir / ".ember"
-    marker = ember_dir / MARKER_FILE
+    home_ember = Path.home() / ".ember"
+    home_ember.mkdir(parents=True, exist_ok=True)
+    marker = home_ember / MARKER_FILE
 
     if marker.exists():
         return False
 
+    ember_dir = project_dir / ".ember"
     ember_dir.mkdir(parents=True, exist_ok=True)
 
     _copy_agents(project_dir)
@@ -196,12 +198,18 @@ def _copy_skills(project_dir: Path) -> None:
 
 
 def _provision_hooks(project_dir: Path) -> None:
-    """Write built-in hook scripts and register them in settings."""
+    """Write built-in hook scripts and register them in settings.
+
+    Hook scripts go in the project's `.ember/hooks/` directory.
+    Hook registrations go in `~/.ember/settings.json` (user global).
+    """
     ember_dir = project_dir / ".ember"
     hooks_dir = ember_dir / "hooks"
     hooks_dir.mkdir(parents=True, exist_ok=True)
 
-    settings_path = ember_dir / "settings.json"
+    home_ember = Path.home() / ".ember"
+    home_ember.mkdir(parents=True, exist_ok=True)
+    settings_path = home_ember / "settings.json"
     settings = _load_json(settings_path)
 
     for hook in BUILT_IN_HOOKS:

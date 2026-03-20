@@ -57,9 +57,7 @@ def _detect_sse_port() -> int | None:
     """
     for port in range(_SSE_PORT_MIN, _SSE_PORT_MAX + 1):
         try:
-            resp = urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/sse", timeout=1
-            )
+            resp = urllib.request.urlopen(f"http://127.0.0.1:{port}/sse", timeout=1)
             if resp.status == 200:
                 return port
         except Exception:

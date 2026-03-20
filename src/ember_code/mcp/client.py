@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Any
 
-from ember_code.mcp.config import load_mcp_config
+from ember_code.mcp.config import MCPConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class MCPClientManager:
     """Manages connections to external MCP servers."""
 
     def __init__(self, project_dir=None):
-        self.configs = load_mcp_config(project_dir)
+        self.configs = MCPConfigLoader(project_dir).load()
         self._clients: dict[str, Any] = {}
         self._errors: dict[str, str] = {}
 

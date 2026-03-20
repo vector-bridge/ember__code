@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 # VS Code variant identifiers
 VSCODE_VARIANTS = [
-    "code",           # VS Code
+    "code",  # VS Code
     "code-insiders",  # VS Code Insiders
-    "codium",         # VSCodium
-    "cursor",         # Cursor
+    "codium",  # VSCodium
+    "cursor",  # Cursor
 ]
 
 # Default MCP server config for VS Code

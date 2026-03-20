@@ -15,7 +15,7 @@ from ember_code.config.settings import (
 )
 from ember_code.knowledge.embedder import EmberEmbedder
 from ember_code.knowledge.embedder_registry import EmbedderRegistry
-from ember_code.knowledge.manager import KnowledgeManager, setup_knowledge
+from ember_code.knowledge.manager import KnowledgeManager
 from ember_code.knowledge.models import (
     KnowledgeAddResult,
     KnowledgeFilter,
@@ -159,9 +159,9 @@ class TestKnowledgeManager:
         result = manager.create_knowledge()
         assert result is None
 
-    def test_setup_knowledge_disabled(self):
+    def test_create_knowledge_disabled(self):
         settings = Settings(knowledge=KnowledgeConfig(enabled=False))
-        result = setup_knowledge(settings)
+        result = KnowledgeManager(settings).create_knowledge()
         assert result is None
 
     def test_creates_ember_embedder(self):
@@ -229,8 +229,11 @@ class TestKnowledgeOnAgno:
 
         agent = Agent(name="a1")
         team = Team(
-            name="t", members=[agent], mode="coordinate",
-            knowledge="fake-knowledge", search_knowledge=True,
+            name="t",
+            members=[agent],
+            mode="coordinate",
+            knowledge="fake-knowledge",
+            search_knowledge=True,
         )
         assert team.knowledge == "fake-knowledge"
         assert team.search_knowledge is True
@@ -396,7 +399,9 @@ class TestGuardrailsConfig:
             pass
 
         team = Team(
-            name="t", members=[Agent(name="a1")], mode="coordinate",
+            name="t",
+            members=[Agent(name="a1")],
+            mode="coordinate",
             pre_hooks=[FakeGuardrail()],
         )
         assert len(team.pre_hooks) == 1

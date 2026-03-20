@@ -1,12 +1,14 @@
 """Tests for hooks — events, loader, executor."""
 
 import json
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from ember_code.hooks.events import HookEvent
 from ember_code.hooks.executor import HookExecutor
-from ember_code.hooks.loader import HookLoader, load_hooks
+from ember_code.hooks.loader import HookLoader
 from ember_code.hooks.schemas import HookDefinition, HookResult
 
 
@@ -34,11 +36,16 @@ class TestHookEvent:
 
 class TestHookLoader:
     def test_load_empty(self, tmp_path):
-        loader = HookLoader(tmp_path)
-        hooks = loader.load()
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        with patch.object(Path, "home", return_value=fake_home):
+            loader = HookLoader(tmp_path)
+            hooks = loader.load()
         assert hooks == {}
 
     def test_load_from_project_settings(self, tmp_path):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
         ember_dir = tmp_path / ".ember"
         ember_dir.mkdir()
         settings = ember_dir / "settings.json"
@@ -54,14 +61,17 @@ class TestHookLoader:
             )
         )
 
-        loader = HookLoader(tmp_path)
-        hooks = loader.load()
+        with patch.object(Path, "home", return_value=fake_home):
+            loader = HookLoader(tmp_path)
+            hooks = loader.load()
         assert "PreToolUse" in hooks
         assert len(hooks["PreToolUse"]) == 1
         assert hooks["PreToolUse"][0].command == "echo check"
         assert hooks["PreToolUse"][0].matcher == "Write|Edit"
 
     def test_load_multiple_events(self, tmp_path):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
         ember_dir = tmp_path / ".ember"
         ember_dir.mkdir()
         settings = ember_dir / "settings.json"
@@ -77,14 +87,18 @@ class TestHookLoader:
             )
         )
 
-        loader = HookLoader(tmp_path)
-        hooks = loader.load()
+        with patch.object(Path, "home", return_value=fake_home):
+            loader = HookLoader(tmp_path)
+            hooks = loader.load()
         assert len(hooks) == 3
         assert hooks["Stop"][0].type == "http"
         assert hooks["Stop"][0].url == "https://example.com/hook"
 
-    def test_load_hooks_convenience(self, tmp_path):
-        hooks = load_hooks(tmp_path)
+    def test_load_hooks_direct(self, tmp_path):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        with patch.object(Path, "home", return_value=fake_home):
+            hooks = HookLoader(tmp_path).load()
         assert hooks == {}
 
     def test_hook_definition_defaults(self):
@@ -95,23 +109,29 @@ class TestHookLoader:
         assert h.url == ""
 
     def test_ignores_invalid_json(self, tmp_path):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
         ember_dir = tmp_path / ".ember"
         ember_dir.mkdir()
         (ember_dir / "settings.json").write_text("not json {{{")
 
-        loader = HookLoader(tmp_path)
-        hooks = loader.load()
+        with patch.object(Path, "home", return_value=fake_home):
+            loader = HookLoader(tmp_path)
+            hooks = loader.load()
         assert hooks == {}
 
     def test_ignores_non_list_hooks(self, tmp_path):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
         ember_dir = tmp_path / ".ember"
         ember_dir.mkdir()
         (ember_dir / "settings.json").write_text(
             json.dumps({"hooks": {"PreToolUse": "not a list"}})
         )
 
-        loader = HookLoader(tmp_path)
-        hooks = loader.load()
+        with patch.object(Path, "home", return_value=fake_home):
+            loader = HookLoader(tmp_path)
+            hooks = loader.load()
         assert hooks == {}
 
 

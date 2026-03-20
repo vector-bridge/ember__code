@@ -1,9 +1,10 @@
 """Tool permission settings — Claude Code-style allow/ask/deny with argument rules.
 
 Reads from (highest priority last):
-1. ~/.ember/settings.json (user global)
-2. .ember/settings.json (project, committed)
-3. .ember/settings.local.json (project, gitignored)
+1. ~/.ember/settings.json (user global defaults)
+2. ~/.ember/settings.local.json (user local overrides, runtime saves)
+3. .ember/settings.json (project overrides, committed)
+4. .ember/settings.local.json (project local overrides)
 
 Format:
 {
@@ -161,9 +162,18 @@ class ToolPermissions:
         self._load()
 
     def _load(self) -> None:
-        """Load settings files in priority order (last wins)."""
+        """Load settings files in priority order (last wins).
+
+        Hierarchy:
+        1. ~/.ember/settings.json (user global defaults)
+        2. ~/.ember/settings.local.json (user local overrides)
+        3. .ember/settings.json (project overrides, committed)
+        4. .ember/settings.local.json (project local overrides, gitignored)
+        """
+        home_ember = Path.home() / ".ember"
         paths = [
-            Path.home() / ".ember" / "settings.json",
+            home_ember / "settings.json",
+            home_ember / "settings.local.json",
             self._project_dir / ".ember" / "settings.json",
             self._project_dir / ".ember" / "settings.local.json",
         ]
@@ -230,13 +240,13 @@ class ToolPermissions:
         return any(t == tool_name for t, _, _ in self._rules)
 
     def save_rule(self, rule: str, level: str) -> None:
-        """Persist a permission rule to .ember/settings.local.json.
+        """Persist a permission rule to ~/.ember/settings.local.json.
 
         Args:
             rule: e.g. "Bash", "Bash(git status)", "WebFetch(domain:github.com)"
             level: "allow", "ask", or "deny"
         """
-        path = self._project_dir / ".ember" / "settings.local.json"
+        path = Path.home() / ".ember" / "settings.local.json"
         data: dict[str, Any] = {}
         if path.exists():
             with contextlib.suppress(Exception):

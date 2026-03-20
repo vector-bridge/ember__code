@@ -200,9 +200,9 @@ def mcp(ctx):
 def mcp_serve(ctx, transport, port):
     """Start Ember Code as an MCP server."""
     settings = ctx.obj["settings"]
-    from ember_code.mcp.server import create_mcp_server
+    from ember_code.mcp.server import MCPServerFactory
 
-    server = create_mcp_server(settings)
+    server = MCPServerFactory(settings).create()
     if server is None:
         click.echo("Error: MCP dependencies not installed. Run: pip install mcp", err=True)
         raise SystemExit(1)

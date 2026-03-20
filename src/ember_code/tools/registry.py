@@ -10,6 +10,7 @@ from agno.tools.shell import ShellTools
 
 from ember_code.config.tool_permissions import ToolPermissions
 from ember_code.tools.edit import EmberEditTools
+from ember_code.tools.schedule import ScheduleTools
 from ember_code.tools.search import GlobTools, GrepTools
 from ember_code.tools.web import WebTools
 
@@ -42,6 +43,7 @@ class ToolRegistry:
             "WebSearch": self._make_web_search,
             "WebFetch": self._make_web_fetch,
             "Python": self._make_python,
+            "Schedule": self._make_schedule,
         }
 
     @property
@@ -210,6 +212,9 @@ class ToolRegistry:
             kwargs["requires_confirmation_tools"] = ["fetch_url", "fetch_json"]
         return WebTools(**kwargs)
 
+    def _make_schedule(self, confirm: bool = False):
+        return ScheduleTools()
+
     def _make_python(self, confirm: bool = False):
         from agno.tools.python import PythonTools
 
@@ -217,23 +222,3 @@ class ToolRegistry:
         if confirm:
             kwargs["requires_confirmation_tools"] = ["run_python_code"]
         return PythonTools(**kwargs)
-
-
-# Convenience function for backward compatibility
-def resolve_tools(
-    tool_names: list[str] | str,
-    base_dir: str | None = None,
-    config: Any = None,
-    permissions: "ToolPermissions | None" = None,
-    jetbrains_mcp: Any = None,
-    vscode_mcp: Any = None,
-    ide_mcp_clients: dict[str, Any] | None = None,
-) -> list:
-    """Convenience wrapper around ToolRegistry.resolve()."""
-    registry = ToolRegistry(base_dir=base_dir, permissions=permissions)
-    return registry.resolve(
-        tool_names,
-        jetbrains_mcp=jetbrains_mcp,
-        vscode_mcp=vscode_mcp,
-        ide_mcp_clients=ide_mcp_clients,
-    )

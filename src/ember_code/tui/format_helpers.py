@@ -76,6 +76,9 @@ TOOL_NAMES = {
     "delegate_task_to_members": "Delegate",
     "search_knowledge_base": "Knowledge",
     "update_user_memory": "Memory",
+    "schedule_task": "Schedule",
+    "list_scheduled_tasks": "Schedule",
+    "cancel_scheduled_task": "Schedule",
 }
 
 

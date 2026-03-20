@@ -3,7 +3,7 @@
 import pytest
 
 from ember_code.tools.edit import EmberEditTools
-from ember_code.tools.registry import ToolRegistry, resolve_tools
+from ember_code.tools.registry import ToolRegistry
 from ember_code.tools.search import GlobTools
 
 
@@ -54,8 +54,9 @@ class TestToolRegistry:
         tools = reg.resolve(["Custom"])
         assert tools == ["custom_instance"]
 
-    def test_resolve_tools_convenience(self):
-        tools = resolve_tools(["Read", "Glob"])
+    def test_resolve_tools_direct(self):
+        registry = ToolRegistry()
+        tools = registry.resolve(["Read", "Glob"])
         assert len(tools) == 2
 
 

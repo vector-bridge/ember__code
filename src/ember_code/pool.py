@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from ember_code.config.models import ModelRegistry
 from ember_code.config.settings import Settings
 from ember_code.config.tool_permissions import ToolPermissions
-from ember_code.tools.registry import resolve_tools
+from ember_code.tools.registry import ToolRegistry
 
 
 class AgentDefinition(BaseModel):
@@ -115,11 +115,14 @@ def build_agent(
     tools: list[Any] = []
     if definition.tools:
         permissions = ToolPermissions(project_dir=Path(base_dir) if base_dir else None)
-        tools = resolve_tools(
-            definition.tools,
-            base_dir=base_dir,
-            permissions=permissions,
-        )
+        registry = ToolRegistry(base_dir=base_dir, permissions=permissions)
+        tools = registry.resolve(definition.tools)
+
+    # ── Schedule tools (shared across all agents) ───────────────
+    if tools:
+        from ember_code.tools.schedule import ScheduleTools
+
+        tools.append(ScheduleTools())
 
     # ── MCP tools (user-configured servers) ─────────────────────
     if tools and mcp_clients:
@@ -159,15 +162,6 @@ def build_agent(
         kwargs["reasoning_max_steps"] = definition.reasoning_max_steps
 
     return Agent(**kwargs)
-
-
-# ── Backward compatibility ────────────────────────────────────────────
-
-
-class AgentParser:
-    """Thin wrapper kept for backward compatibility with tests."""
-
-    parse = staticmethod(parse_agent_file)
 
 
 # ── Pool ─────────────────────────────────────────────────────────────
@@ -326,8 +320,7 @@ class AgentPool:
             tools_str = ", ".join(defn.tools) if defn.tools else "none"
             tags_str = ", ".join(defn.tags) if defn.tags else "none"
             lines.append(
-                f"- **{defn.name}**: {defn.description} "
-                f"[tools: {tools_str}] [tags: {tags_str}]"
+                f"- **{defn.name}**: {defn.description} [tools: {tools_str}] [tags: {tags_str}]"
             )
         return "\n".join(lines)
 

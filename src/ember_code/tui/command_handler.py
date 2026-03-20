@@ -102,6 +102,9 @@ class CommandHandler:
             "- `/memory optimize` — consolidate memories\n"
             "- `/model [name]` — switch model (picker or direct)\n"
             "- `/config` — show current settings\n"
+            "- `/schedule add <task> at/in <time>` — schedule a deferred task\n"
+            "- `/schedule` — list pending tasks\n"
+            "- `/schedule cancel <id>` — cancel a scheduled task\n"
             "- `/login` — authenticate with Ember Cloud\n"
             "- `/logout` — clear stored credentials\n"
             "- `/whoami` — show current auth status\n"
@@ -294,14 +297,136 @@ class CommandHandler:
         expires = creds.expires_at[:19] if creds.expires_at else "unknown"
         return CommandResult.info(f"Logged in as {creds.email} (expires: {expires})")
 
+    async def _cmd_schedule(self, args: str) -> "CommandResult":
+        """Handle /schedule commands: add, list, remove, show."""
+
+        from ember_code.scheduler.models import TaskStatus
+        from ember_code.scheduler.store import TaskStore
+
+        store = TaskStore()
+        parts = args.strip().split(None, 1)
+        subcommand = parts[0].lower() if parts else "list"
+        sub_args = parts[1].strip() if len(parts) > 1 else ""
+
+        if subcommand == "add" and sub_args:
+            return await self._schedule_add(store, sub_args)
+
+        if subcommand in ("rm", "remove", "cancel") and sub_args:
+            task_id = sub_args.strip()
+            task = await store.get(task_id)
+            if not task:
+                return CommandResult.error(f"Task not found: {task_id}")
+            if task.status in (TaskStatus.pending, TaskStatus.running):
+                await store.update_status(task_id, TaskStatus.cancelled)
+                return CommandResult.info(f"Cancelled task {task_id}")
+            return CommandResult.info(f"Task {task_id} is already {task.status.value}")
+
+        if subcommand == "show" and sub_args:
+            task = await store.get(sub_args.strip())
+            if not task:
+                return CommandResult.error(f"Task not found: {sub_args.strip()}")
+            lines = (
+                f"## Task {task.id}\n"
+                f"- **Description:** {task.description}\n"
+                f"- **Scheduled:** {task.scheduled_at.strftime('%Y-%m-%d %H:%M')}\n"
+                f"- **Status:** {task.status.value}\n"
+                f"- **Created:** {task.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+            )
+            if task.result:
+                lines += f"\n**Result:**\n{task.result}\n"
+            if task.error:
+                lines += f"\n**Error:**\n{task.error}\n"
+            return CommandResult.markdown(lines)
+
+        if subcommand == "all":
+            tasks = await store.get_all(include_done=True)
+        else:
+            # Default: list pending/running
+            tasks = await store.get_all(include_done=False)
+
+        if not tasks:
+            return CommandResult.info("No scheduled tasks.")
+
+        lines = "## Scheduled Tasks\n"
+        for t in tasks:
+            time_str = t.scheduled_at.strftime("%Y-%m-%d %H:%M")
+            status_icon = {
+                "pending": "[dim]pending[/dim]",
+                "running": "[bold]running[/bold]",
+                "completed": "[green]done[/green]",
+                "failed": "[red]failed[/red]",
+                "cancelled": "[dim]cancelled[/dim]",
+            }.get(t.status.value, t.status.value)
+            desc = t.description[:60] + ("..." if len(t.description) > 60 else "")
+            lines += f"- `{t.id}` {status_icon} {time_str} — {desc}\n"
+        lines += "\n[dim]Use `/schedule show <id>` for details, `/schedule cancel <id>` to cancel.[/dim]\n"
+        return CommandResult.markdown(lines)
+
+    @staticmethod
+    async def _schedule_add(store, text: str) -> "CommandResult":
+        """Parse 'description at/in/every time' and create a task."""
+        import uuid
+
+        from ember_code.scheduler.models import ScheduledTask
+        from ember_code.scheduler.parser import parse_recurrence, parse_time
+
+        # Try recurring: "run tests every 2 hours", "check deps daily", "audit weekly at 9am"
+        for sep in (" every ", " daily", " hourly", " weekly"):
+            idx = text.lower().rfind(sep)
+            if idx > 0:
+                description = text[:idx].strip()
+                recur_part = text[idx:].strip()
+                recurrence, scheduled = parse_recurrence(recur_part)
+                if recurrence and scheduled:
+                    task = ScheduledTask(
+                        id=uuid.uuid4().hex[:8],
+                        description=description,
+                        scheduled_at=scheduled,
+                        recurrence=recurrence,
+                    )
+                    await store.add(task)
+                    return CommandResult.info(
+                        f'Scheduled `{task.id}`: "{description}" '
+                        f"({recurrence}, first at {scheduled.strftime('%Y-%m-%d %H:%M')})"
+                    )
+
+        # Try one-shot: "review codebase at 5pm"
+        for sep in (" at ", " in ", " on ", " tomorrow"):
+            idx = text.lower().rfind(sep)
+            if idx > 0:
+                description = text[:idx].strip()
+                time_part = text[idx:].strip()
+                scheduled = parse_time(time_part)
+                if scheduled:
+                    task = ScheduledTask(
+                        id=uuid.uuid4().hex[:8],
+                        description=description,
+                        scheduled_at=scheduled,
+                    )
+                    await store.add(task)
+                    return CommandResult.info(
+                        f'Scheduled `{task.id}`: "{description}" at {scheduled.strftime("%Y-%m-%d %H:%M")}'
+                    )
+
+        return CommandResult.error(
+            "Could not parse time. Examples:\n"
+            "  /schedule add review the codebase at 5pm\n"
+            "  /schedule add run tests in 30 minutes\n"
+            "  /schedule add audit security tomorrow\n"
+            "  /schedule add run tests every 2 hours\n"
+            "  /schedule add check dependencies daily"
+        )
+
     async def _handle_skill(self, stripped: str) -> "CommandResult":
         """Try to match and execute a skill command."""
         skill_match = self._session.skill_pool.match_user_command(stripped)
         if skill_match:
             skill, args = skill_match
-            from ember_code.skills.executor import execute_skill
+            from ember_code.skills.executor import SkillExecutor
 
-            result = await execute_skill(skill, args, self._session.pool, self._session.settings)
+            result = await SkillExecutor(self._session.pool, self._session.settings).execute(
+                skill, args
+            )
             return CommandResult.markdown(result)
         return CommandResult.error(f"Unknown command: {stripped.split()[0]}")
 
@@ -324,4 +449,5 @@ class CommandHandler:
         "/login": _cmd_login,
         "/logout": _cmd_logout,
         "/whoami": _cmd_whoami,
+        "/schedule": _cmd_schedule,
     }

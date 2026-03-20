@@ -16,9 +16,9 @@ from ember_code.config.settings import Settings
 from ember_code.config.tool_permissions import ToolPermissions
 from ember_code.hooks.events import HookEvent
 from ember_code.hooks.executor import HookExecutor
-from ember_code.hooks.loader import load_hooks
+from ember_code.hooks.loader import HookLoader
 from ember_code.init import initialize_project
-from ember_code.knowledge.manager import setup_knowledge
+from ember_code.knowledge.manager import KnowledgeManager
 from ember_code.mcp.client import MCPClientManager
 from ember_code.memory.manager import setup_db
 from ember_code.pool import AgentPool
@@ -64,7 +64,7 @@ class Session:
         self.db = setup_db(settings)
 
         # ── Knowledge (ChromaDB + Agno Knowledge) ─────────────────────
-        self.knowledge = setup_knowledge(settings)
+        self.knowledge = KnowledgeManager(settings).create_knowledge()
 
         # ── Permission Guard ─────────────────────────────────────────
         self.permission_guard = PermissionGuard(settings)
@@ -73,7 +73,7 @@ class Session:
         self.audit = AuditLogger(settings)
 
         # ── Hooks ────────────────────────────────────────────────────
-        self.hooks_map = load_hooks(self.project_dir)
+        self.hooks_map = HookLoader(self.project_dir).load()
         self.hook_executor = HookExecutor(self.hooks_map)
 
         # ── Project Context ──────────────────────────────────────────
@@ -118,7 +118,7 @@ class Session:
             base_dir=str(self.project_dir),
             permissions=ToolPermissions(project_dir=self.project_dir),
         )
-        leader_tool_names = ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
+        leader_tool_names = ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Schedule"]
         for name in ("WebSearch", "WebFetch"):
             try:
                 registry.resolve([name])
@@ -300,15 +300,13 @@ class Session:
                 logger.warning("Failed to generate session summary: %s", e)
 
         # Trim history — summary covers older turns
-        if current is None:
-            new_limit = 4
-        else:
-            new_limit = max(2, current // 2)
+        new_limit = 4 if current is None else max(2, current // 2)
 
         self.main_team.num_history_runs = new_limit
         logger.info(
             "Context at %.0f%% — trimmed history to %d runs (summary covers older turns)",
-            usage * 100, new_limit,
+            usage * 100,
+            new_limit,
         )
         return True
 
@@ -352,7 +350,10 @@ class Session:
 
                 logger.debug(
                     "  MSG[%d] role=%-9s %s | %s",
-                    i, role, " ".join(extras), preview,
+                    i,
+                    role,
+                    " ".join(extras),
+                    preview,
                 )
         except Exception as e:
             logger.debug("RUN_MESSAGES: error: %s", e)

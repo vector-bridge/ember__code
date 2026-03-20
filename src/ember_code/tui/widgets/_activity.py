@@ -123,9 +123,7 @@ class AgentActivityWidget(Static):
         if agent and agent.status != "done":
             agent.status = "running"
 
-    def on_agent_tokens(
-        self, run_id: str, input_tokens: int, output_tokens: int
-    ) -> None:
+    def on_agent_tokens(self, run_id: str, input_tokens: int, output_tokens: int) -> None:
         agent = self._agents.get(run_id)
         if agent:
             agent.input_tokens += input_tokens or 0
@@ -162,17 +160,13 @@ class AgentActivityWidget(Static):
             )
         if agent.is_running:
             lines.append(
-                f"[bold $accent]{frame}[/bold $accent] "
-                f"[dim]{elapsed}[/dim]  {agent.name}{tokens}"
+                f"[bold $accent]{frame}[/bold $accent] [dim]{elapsed}[/dim]  {agent.name}{tokens}"
             )
         else:
             lines.append(f"[dim]\u2713 {elapsed}  {agent.name}{tokens}[/dim]")
 
         # Child agents
-        children = [
-            a for rid, a in self._agents.items()
-            if rid != self._orchestrator_id
-        ]
+        children = [a for rid, a in self._agents.items() if rid != self._orchestrator_id]
 
         if not children:
             return lines[0]
@@ -205,7 +199,7 @@ class AgentActivityWidget(Static):
                     lines.append(f"  [dim]+ {len(done)} agents done[/dim]")
             else:
                 # More running than budget — show most recent running
-                for a in running[-(budget - 1):]:
+                for a in running[-(budget - 1) :]:
                     lines.append(self._format_child(a))
                 hidden = len(children) - (budget - 1)
                 if hidden > 0:

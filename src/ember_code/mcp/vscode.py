@@ -45,9 +45,7 @@ def get_vscode_tools(mcp_tools: Any) -> set[str]:
             if isinstance(funcs, dict):
                 return set(funcs.keys())
             if isinstance(funcs, list):
-                return {
-                    getattr(f, "name", None) or getattr(f, "__name__", str(f)) for f in funcs
-                }
+                return {getattr(f, "name", None) or getattr(f, "__name__", str(f)) for f in funcs}
         if hasattr(mcp_tools, "toolkit_functions"):
             return {f.name for f in mcp_tools.toolkit_functions}
     except Exception:

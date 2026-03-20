@@ -12,6 +12,7 @@ class HookDefinition(BaseModel):
     headers: dict[str, str] = Field(default_factory=dict)
     matcher: str = ""
     timeout: int = 10000
+    background: bool = False  # fire-and-forget, don't block the agent
 
 
 class HookResult(BaseModel):

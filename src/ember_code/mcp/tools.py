@@ -26,13 +26,3 @@ class MCPToolProvider:
             if mcp_tools is not None:
                 tools.append(mcp_tools)
         return tools
-
-
-# Backward compatibility
-async def get_mcp_tools_for_agent(
-    mcp_server_names: list[str],
-    mcp_manager: MCPClientManager,
-) -> list[Any]:
-    """Convenience wrapper around MCPToolProvider.get_tools_for_agent()."""
-    provider = MCPToolProvider(mcp_manager)
-    return await provider.get_tools_for_agent(mcp_server_names)

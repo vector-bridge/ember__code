@@ -60,15 +60,3 @@ class SkillExecutor:
             return extract_response_text(response)
         except Exception as e:
             return f"Error executing skill '{skill.name}': {e}"
-
-
-# Backward compatibility
-async def execute_skill(
-    skill: "SkillDefinition",
-    arguments: str,
-    pool: "AgentPool",
-    settings: "Settings",
-) -> str:
-    """Convenience wrapper around SkillExecutor.execute()."""
-    executor = SkillExecutor(pool, settings)
-    return await executor.execute(skill, arguments)

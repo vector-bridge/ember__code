@@ -282,7 +282,8 @@ class RunController:
             self._run_input_tokens += input_t
             self._run_output_tokens += output_t
             self._on_tokens(
-                input_t, output_t,
+                input_t,
+                output_t,
                 getattr(event, "run_id", None),
                 getattr(event, "parent_run_id", None),
             )
@@ -293,7 +294,8 @@ class RunController:
             run_id = getattr(event, "run_id", None)
             if name and run_id:
                 self._on_agent_started(
-                    name, run_id,
+                    name,
+                    run_id,
                     getattr(event, "parent_run_id", None),
                     str(getattr(event, "model", "") or ""),
                 )
@@ -409,8 +411,10 @@ class RunController:
 
         preview_lines = self._app.settings.display.tool_result_preview_lines
         widget = ToolCallLiveWidget(
-            friendly, args_summary,
-            status="running", preview_lines=preview_lines,
+            friendly,
+            args_summary,
+            status="running",
+            preview_lines=preview_lines,
         )
         await self._conversation.container.mount(widget)
         self._auto_scroll()
@@ -573,7 +577,10 @@ class RunController:
                     extra_str = " | ".join(extras) if extras else ""
                     logger.debug(
                         "  MSG[%d] role=%s %s content=%.200s",
-                        i, role, extra_str, content_preview,
+                        i,
+                        role,
+                        extra_str,
+                        content_preview,
                     )
             else:
                 logger.debug("RUN_MESSAGES: no messages in run_response")

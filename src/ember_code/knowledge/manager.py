@@ -70,8 +70,3 @@ class KnowledgeManager:
 
         registry = EmbedderRegistry(self.settings)
         return registry.get_embedder(cfg.embedder)
-
-
-def setup_knowledge(settings: Settings) -> Any | None:
-    """Convenience function to create a Knowledge instance."""
-    return KnowledgeManager(settings).create_knowledge()

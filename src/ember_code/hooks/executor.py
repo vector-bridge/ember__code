@@ -37,8 +37,8 @@ class HookExecutor:
     ) -> HookResult:
         """Execute all matching hooks for an event.
 
-        Hooks run in parallel. For PreToolUse, if ANY hook blocks (exit 2),
-        the tool call is blocked.
+        Foreground hooks run in parallel and are awaited — if ANY hook blocks
+        (exit 2), the tool call is blocked. Background hooks are fire-and-forget.
 
         Args:
             event: The event name (e.g., "PreToolUse").
@@ -46,19 +46,32 @@ class HookExecutor:
             target: Target to match against (e.g., tool name).
 
         Returns:
-            Combined result from all hooks.
+            Combined result from foreground hooks only.
         """
         hooks = self.get_matching_hooks(event, target)
         if not hooks:
             return HookResult(should_continue=True)
 
-        # Run all hooks in parallel
+        fg_hooks = [h for h in hooks if not h.background]
+        bg_hooks = [h for h in hooks if h.background]
+
+        # Fire-and-forget background hooks
+        for hook in bg_hooks:
+            if hook.type == "command":
+                asyncio.create_task(self._run_command_hook(hook, payload))
+            elif hook.type == "http":
+                asyncio.create_task(self._run_http_hook(hook, payload))
+
+        # Run foreground hooks in parallel and await results
         tasks = []
-        for hook in hooks:
+        for hook in fg_hooks:
             if hook.type == "command":
                 tasks.append(self._run_command_hook(hook, payload))
             elif hook.type == "http":
                 tasks.append(self._run_http_hook(hook, payload))
+
+        if not tasks:
+            return HookResult(should_continue=True)
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 

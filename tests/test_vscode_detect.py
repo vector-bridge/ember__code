@@ -15,7 +15,9 @@ class TestDetectVscode:
     def test_detects_from_running_process(self):
         mock_result = MagicMock()
         mock_result.returncode = 0
-        mock_result.stdout = "user 1234 /Applications/Visual Studio Code.app/Contents/MacOS/code helper"
+        mock_result.stdout = (
+            "user 1234 /Applications/Visual Studio Code.app/Contents/MacOS/code helper"
+        )
 
         with patch("ember_code.mcp.vscode_detect.subprocess.run", return_value=mock_result):
             result = detect_vscode()
@@ -28,7 +30,10 @@ class TestDetectVscode:
 
         with (
             patch("ember_code.mcp.vscode_detect.subprocess.run", return_value=mock_result),
-            patch("ember_code.mcp.vscode_detect.shutil.which", side_effect=lambda x: "/usr/bin/code" if x == "code" else None),
+            patch(
+                "ember_code.mcp.vscode_detect.shutil.which",
+                side_effect=lambda x: "/usr/bin/code" if x == "code" else None,
+            ),
         ):
             result = detect_vscode()
         assert result == "code"

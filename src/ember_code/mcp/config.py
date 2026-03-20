@@ -59,9 +59,3 @@ class MCPConfigLoader:
                 )
         except (json.JSONDecodeError, OSError):
             pass
-
-
-# Backward compatibility
-def load_mcp_config(project_dir: Path | None = None) -> dict[str, MCPServerConfig]:
-    """Convenience wrapper around MCPConfigLoader.load()."""
-    return MCPConfigLoader(project_dir).load()

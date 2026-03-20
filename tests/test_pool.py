@@ -2,12 +2,12 @@
 
 import pytest
 
-from ember_code.pool import AgentParser, AgentPool
+from ember_code.pool import AgentPool, parse_agent_file
 
 
 class TestAgentParser:
     def test_parse_valid_md(self, sample_agent_md):
-        defn = AgentParser.parse(sample_agent_md)
+        defn = parse_agent_file(sample_agent_md)
         assert defn.name == "test-agent"
         assert defn.description == "A test agent"
         assert defn.tools == ["Read", "Grep"]
@@ -22,36 +22,36 @@ class TestAgentParser:
         md = tmp_path / "bad.md"
         md.write_text("No frontmatter here\n")
         with pytest.raises(ValueError, match="No YAML frontmatter"):
-            AgentParser.parse(md)
+            parse_agent_file(md)
 
     def test_parse_missing_name(self, tmp_path):
         md = tmp_path / "noname.md"
         md.write_text("---\ndescription: test\n---\nbody\n")
         with pytest.raises(ValueError, match="missing 'name'"):
-            AgentParser.parse(md)
+            parse_agent_file(md)
 
     def test_parse_missing_description(self, tmp_path):
         md = tmp_path / "nodesc.md"
         md.write_text("---\nname: test\n---\nbody\n")
         with pytest.raises(ValueError, match="missing 'description'"):
-            AgentParser.parse(md)
+            parse_agent_file(md)
 
     def test_parse_tools_as_string(self, tmp_path):
         md = tmp_path / "tools-str.md"
         md.write_text("---\nname: t\ndescription: d\ntools: Read, Write, Edit\n---\n")
-        defn = AgentParser.parse(md)
+        defn = parse_agent_file(md)
         assert defn.tools == ["Read", "Write", "Edit"]
 
     def test_parse_tools_as_list(self, tmp_path):
         md = tmp_path / "tools-list.md"
         md.write_text("---\nname: t\ndescription: d\ntools:\n  - Bash\n  - Grep\n---\n")
-        defn = AgentParser.parse(md)
+        defn = parse_agent_file(md)
         assert defn.tools == ["Bash", "Grep"]
 
     def test_parse_defaults(self, tmp_path):
         md = tmp_path / "minimal.md"
         md.write_text("---\nname: minimal\ndescription: minimal agent\n---\n")
-        defn = AgentParser.parse(md)
+        defn = parse_agent_file(md)
         assert defn.tools == []
         assert defn.model is None
         assert defn.reasoning is False
@@ -71,7 +71,7 @@ class TestAgentParser:
             "---\n"
             "Prompt body here.\n"
         )
-        defn = AgentParser.parse(md)
+        defn = parse_agent_file(md)
         assert defn.color == "blue"
         assert defn.can_orchestrate is False
         assert defn.max_turns == 5

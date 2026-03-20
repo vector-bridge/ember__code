@@ -26,9 +26,7 @@ def resolve_api_key(entry: dict[str, Any]) -> str | None:
         if key:
             return key
     if "api_key_cmd" in entry:
-        result = subprocess.run(
-            entry["api_key_cmd"], shell=True, capture_output=True, text=True
-        )
+        result = subprocess.run(entry["api_key_cmd"], shell=True, capture_output=True, text=True)
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
     return None

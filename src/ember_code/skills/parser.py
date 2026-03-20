@@ -90,9 +90,3 @@ class SkillParser:
             body=body,
             source_dir=path.parent,
         )
-
-
-# Backward compatibility
-def parse_skill_md(path: Path) -> SkillDefinition:
-    """Convenience wrapper around SkillParser.parse()."""
-    return SkillParser.parse(path)

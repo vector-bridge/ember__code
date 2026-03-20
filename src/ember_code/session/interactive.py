@@ -101,9 +101,9 @@ async def run_session_interactive(
             if skill_match:
                 skill, args = skill_match
                 print_info(f"Running skill: /{skill.name}")
-                from ember_code.skills.executor import execute_skill
+                from ember_code.skills.executor import SkillExecutor
 
-                result = await execute_skill(skill, args, session.pool, session.settings)
+                result = await SkillExecutor(session.pool, session.settings).execute(skill, args)
                 print_response(result)
 
                 session.audit.log(

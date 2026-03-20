@@ -96,14 +96,3 @@ class MCPServerFactory:
 
         async with stdio_server() as (read_stream, write_stream):
             await server.run(read_stream, write_stream)
-
-
-# Backward compatibility
-def create_mcp_server(settings: Any = None) -> Any:
-    """Convenience wrapper around MCPServerFactory.create()."""
-    return MCPServerFactory(settings).create()
-
-
-async def run_mcp_server(settings: Any = None):
-    """Convenience wrapper around MCPServerFactory.run_stdio()."""
-    await MCPServerFactory(settings).run_stdio()

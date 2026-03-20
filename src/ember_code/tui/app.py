@@ -24,8 +24,8 @@ from ember_code.session import Session
 from ember_code.tui.command_handler import CommandHandler, CommandResult
 from ember_code.tui.conversation_view import ConversationView
 from ember_code.tui.hitl_handler import HITLHandler
-from ember_code.tui.run_controller import RunController
 from ember_code.tui.input_handler import InputHandler, shortcut_label
+from ember_code.tui.run_controller import RunController
 from ember_code.tui.session_manager import SessionManager
 from ember_code.tui.status_tracker import StatusTracker
 from ember_code.tui.widgets import (
@@ -36,6 +36,7 @@ from ember_code.tui.widgets import (
     QueuePanel,
     SessionPickerWidget,
     StatusBar,
+    TaskPanel,
     TipBar,
     UpdateBar,
 )
@@ -172,6 +173,12 @@ class EmberApp(App):
         height: auto;
         max-height: 10;
     }
+
+    #task-panel {
+        dock: bottom;
+        height: auto;
+        max-height: 12;
+    }
     """
 
     _IS_MACOS = sys.platform == "darwin"
@@ -182,6 +189,7 @@ class EmberApp(App):
         Binding("ctrl+o", "toggle_expand_all", "Expand", show=False),
         Binding("ctrl+v", "toggle_verbose", "Verbose", show=False),
         Binding("ctrl+q", "toggle_queue", "Queue", show=False),
+        Binding("ctrl+t", "toggle_tasks", "Tasks", show=False),
         Binding("escape", "cancel", "Cancel", show=False),
     ]
 
@@ -206,6 +214,7 @@ class EmberApp(App):
         self._controller: RunController | None = None
         self._hitl: HITLHandler | None = None
         self._sessions: SessionManager | None = None
+        self._scheduler_runner = None
 
     # ── Public accessors ────────────────────────────────────────────
 
@@ -290,6 +299,7 @@ class EmberApp(App):
         )
         yield ScrollableContainer(id="conversation")
         yield QueuePanel(id="queue-panel")
+        yield TaskPanel(id="task-panel")
         yield UpdateBar(id="update-bar")
         yield TipBar(id="tip-bar")
         with Vertical(id="footer"):
@@ -359,6 +369,9 @@ class EmberApp(App):
 
         self.query_one("#user-input", PromptInput).focus()
 
+        # ── Scheduler ──────────────────────────────────────────────────
+        self._start_scheduler()
+
         # ── Non-blocking background init ──────────────────────────────
         asyncio.create_task(self._check_for_update())
         asyncio.create_task(self._init_mcp_background())
@@ -370,21 +383,15 @@ class EmberApp(App):
             self._controller.set_current_task(task)
 
     async def on_unmount(self) -> None:
-        """Clean up MCP connections on app exit.
-
-        For SSE connections, we redirect stderr to /dev/null before
-        abandoning them — asyncio's shutdown will try to finalize the
-        dangling async generators and print errors we can't suppress
-        any other way.
-        """
+        """Clean up scheduler and MCP connections on app exit."""
         import os
         import sys
 
+        if self._scheduler_runner:
+            self._scheduler_runner.stop()
+
         if self._session:
-            has_sse = any(
-                c.type == "sse"
-                for c in self._session.mcp_manager.configs.values()
-            )
+            has_sse = any(c.type == "sse" for c in self._session.mcp_manager.configs.values())
             if has_sse and self._session.mcp_manager.list_connected():
                 # Redirect fd 2 → /dev/null BEFORE abandoning SSE clients.
                 # This silences asyncio's async generator finalization errors.
@@ -563,6 +570,99 @@ class EmberApp(App):
             self.query_one("#queue-panel", QueuePanel).add_class("-hidden")
         self.query_one("#user-input", PromptInput).focus()
 
+    # ── Task panel events ──────────────────────────────────────────
+
+    @on(TaskPanel.TaskSelected)
+    async def _on_task_selected(self, event: TaskPanel.TaskSelected) -> None:
+        """Show task details in conversation."""
+        from ember_code.scheduler.store import TaskStore
+
+        store = TaskStore()
+        task = await store.get(event.task_id)
+        if not task:
+            return
+        lines = (
+            f"**Task {task.id}** — {task.status.value}\n"
+            f"*{task.description}*\n"
+            f"Scheduled: {task.scheduled_at.strftime('%Y-%m-%d %H:%M')}\n"
+        )
+        if task.result:
+            lines += f"\n**Result:**\n{task.result}\n"
+        if task.error:
+            lines += f"\n**Error:**\n{task.error}\n"
+        self._conversation.append_markdown(lines)
+
+    @on(TaskPanel.TaskCancelled)
+    async def _on_task_cancelled(self, event: TaskPanel.TaskCancelled) -> None:
+        from ember_code.scheduler.models import TaskStatus
+        from ember_code.scheduler.store import TaskStore
+
+        store = TaskStore()
+        await store.update_status(event.task_id, TaskStatus.cancelled)
+        self._conversation.append_info(f"Cancelled task {event.task_id}")
+        await self._refresh_task_panel()
+
+    @on(TaskPanel.PanelClosed)
+    def _on_task_panel_closed(self, _event: TaskPanel.PanelClosed) -> None:
+        with contextlib.suppress(NoMatches):
+            self.query_one("#task-panel", TaskPanel).add_class("-hidden")
+        self.query_one("#user-input", PromptInput).focus()
+
+    # ── Scheduler ────────────────────────────────────────────────
+
+    def _start_scheduler(self) -> None:
+        """Start the background scheduler runner."""
+        from ember_code.scheduler.runner import SchedulerRunner
+        from ember_code.scheduler.store import TaskStore
+
+        store = TaskStore()
+        self._scheduler_runner = SchedulerRunner(
+            store=store,
+            execute_fn=self._execute_scheduled_task,
+            on_task_started=self._on_scheduled_task_started,
+            on_task_completed=self._on_scheduled_task_completed,
+            poll_interval=15,
+        )
+        self._scheduler_runner.start()
+
+    async def _execute_scheduled_task(self, description: str) -> str:
+        """Execute a scheduled task through the AI agent."""
+        # Wait for session to be ready (up to 60s)
+        for _ in range(60):
+            if self._session and getattr(self._session, "main_team", None):
+                break
+            await asyncio.sleep(1)
+        else:
+            return "Session not ready after 60s"
+
+        team = self._session.main_team
+        run = await team.arun(description, stream=False)
+        return run.content if hasattr(run, "content") and run.content else str(run)
+
+    def _on_scheduled_task_started(self, task_id: str, description: str) -> None:
+        short = description[:50] + ("..." if len(description) > 50 else "")
+        self._conversation.append_info(f"Running scheduled task `{task_id}`: {short}")
+        asyncio.create_task(self._refresh_task_panel())
+
+    def _on_scheduled_task_completed(self, task_id: str, description: str, success: bool) -> None:
+        status = "completed" if success else "failed"
+        self._conversation.append_info(
+            f"Scheduled task `{task_id}` {status}. Use `/schedule show {task_id}` to see results."
+        )
+        asyncio.create_task(self._refresh_task_panel())
+
+    async def _refresh_task_panel(self) -> None:
+        """Refresh the task panel with current tasks."""
+        try:
+            from ember_code.scheduler.store import TaskStore
+
+            store = TaskStore()
+            tasks = await store.get_all(include_done=True)
+            panel = self.query_one("#task-panel", TaskPanel)
+            panel.refresh_tasks(tasks)
+        except Exception:
+            pass
+
     # ── Actions (Textual keybindings) ─────────────────────────────
 
     def action_clear_screen(self) -> None:
@@ -583,6 +683,20 @@ class EmberApp(App):
         try:
             panel = self.query_one("#queue-panel", QueuePanel)
             if panel.has_class("-hidden") and self._controller.queue_size > 0:
+                panel.remove_class("-hidden")
+                panel.focus()
+            else:
+                panel.add_class("-hidden")
+                self.query_one("#user-input", PromptInput).focus()
+        except Exception:
+            pass
+
+    async def action_toggle_tasks(self) -> None:
+        """Toggle task panel visibility."""
+        try:
+            panel = self.query_one("#task-panel", TaskPanel)
+            if panel.has_class("-hidden"):
+                await self._refresh_task_panel()
                 panel.remove_class("-hidden")
                 panel.focus()
             else:
@@ -634,6 +748,8 @@ class EmberApp(App):
         "/agents — list loaded agents and their tools",
         "/skills — list available skills",
         "/config — show current settings",
+        "/schedule add <task> at <time> — schedule deferred tasks",
+        "Ctrl+T — toggle the task panel",
     ]
 
     def _start_tip_rotation(self) -> None:
