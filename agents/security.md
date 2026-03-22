@@ -2,7 +2,7 @@
 name: security
 description: Performs security analysis of code to identify vulnerabilities, insecure patterns, and hardcoded secrets.
 tools: Glob, Grep, LS, Read, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: red
 reasoning: true
 reasoning_max_steps: 8

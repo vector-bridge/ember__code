@@ -308,7 +308,7 @@ For organizations, administrators can enforce security policies that individual 
     ]
   },
   "models": {
-    "allowed": ["MiniMax-M2.5"]
+    "allowed": ["MiniMax-M2.7"]
   }
 }
 ```
@@ -344,17 +344,17 @@ Control which MCP servers are allowed or required:
 safety:
   network:
     allowed_domains:
-      - "api.vectorbridge.io"
-      - "api.minimax.io"
+      - "api.ignite-ember.sh"    # All Ember services (models, CodeIndex, embeddings)
       - "github.com"
     block_all_other: true          # deny-by-default for network access
 ```
 
-### VectorBridge Data Residency
+### CodeIndex Data Residency
 
-For teams that can't send code to the cloud, VectorBridge can be [self-hosted](VECTORBRIDGE.md#self-hosting-advanced):
+For teams that can't send code to the cloud, CodeIndex can be [self-hosted](CODEINDEX.md#self-hosting-advanced):
 
 ```yaml
+# CodeIndex (config key is 'vectorbridge' for SDK compatibility)
 vectorbridge:
   api_url: "https://vectorbridge.internal.corp.com"
 ```
@@ -378,7 +378,7 @@ All code analysis and embeddings stay on your infrastructure.
 | Hooks | PreToolUse/PostToolUse/Stop | Same events, same format |
 | Guardrails | Not built-in | PII detection, prompt injection, moderation pre-hooks |
 | Network control | Not built-in | allowed_domains, deny-by-default |
-| VectorBridge | N/A | Self-hostable for data residency |
+| CodeIndex | N/A | Self-hostable for data residency |
 
 ---
 
@@ -402,7 +402,7 @@ All code analysis and embeddings stay on your infrastructure.
 ### For Enterprise
 
 - [ ] Deploy managed-settings.json via MDM/configuration management
-- [ ] Self-host VectorBridge for code data residency
+- [ ] Self-host CodeIndex for code data residency
 - [ ] Restrict allowed MCP servers to approved list
 - [ ] Enable network deny-by-default with whitelisted domains
 - [ ] Mandate shell sandboxing

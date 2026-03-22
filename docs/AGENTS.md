@@ -48,7 +48,7 @@ Agent `.md` files use **the same format as Claude Code** — YAML frontmatter wi
 name: code-explorer
 description: Deeply analyzes existing codebase features by tracing execution paths, mapping architecture layers, and documenting dependencies
 tools: Glob, Grep, LS, Read, NotebookRead, WebFetch, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: yellow
 ---
 
@@ -65,7 +65,7 @@ Provide a complete understanding of how a specific feature works by tracing its 
 name: code-explorer
 description: Deeply analyzes existing codebase features by tracing execution paths, mapping architecture layers, and documenting dependencies
 tools: Glob, Grep, LS, Read, NotebookRead, WebFetch, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: yellow
 
 # Ember extensions (ignored by Claude Code, used by Ember Code)
@@ -89,7 +89,7 @@ You are an expert code analyst...
 | `name` | string | yes | Unique identifier for this agent |
 | `description` | string | yes | What this agent does — the Orchestrator reads this to decide when to use it |
 | `tools` | string/list | no | Comma-separated string or YAML list. Uses Claude Code tool names (`Read`, `Write`, `Edit`, `Bash`, etc.) |
-| `model` | string | no | Model ID (`MiniMax-M2.5`, `MiniMax-M2.5-highspeed`) or any Agno-supported model. Defaults to config default |
+| `model` | string | no | Model ID (`MiniMax-M2.7`, `MiniMax-M2.7-highspeed`) or any Agno-supported model. Defaults to config default |
 | `color` | string | no | UI color for this agent (`yellow`, `red`, `green`, `blue`, etc.) |
 
 **Ember Code extensions** (ignored by Claude Code if the file is used there):
@@ -181,14 +181,14 @@ Ember Code ships with foundational agents in Claude Code compatible format plus 
 **explorer.md** — Read-only codebase search and analysis.
 ```yaml
 tools: Glob, Grep, LS, Read, WebFetch, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 tags: [search, read-only, exploration]
 ```
 
 **architect.md** — Designs component architecture, data flows, and interfaces.
 ```yaml
 tools: Glob, Grep, LS, Read, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 reasoning: true
 tags: [architecture, design, read-only]
 ```
@@ -196,7 +196,7 @@ tags: [architecture, design, read-only]
 **planner.md** — Analyzes tasks, produces structured implementation plans.
 ```yaml
 tools: Glob, Grep, LS, Read, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 reasoning: true
 tags: [planning, reasoning, read-only]
 ```
@@ -204,21 +204,21 @@ tags: [planning, reasoning, read-only]
 **editor.md** — Creates and modifies files. Can spawn sub-teams for exploration or review.
 ```yaml
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 tags: [coding, editing, file-write]
 ```
 
 **simplifier.md** — Post-edit code polish, dead code removal, complexity reduction.
 ```yaml
 tools: Read, Edit, Glob, Grep, Bash
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 tags: [quality, refactoring, simplification]
 ```
 
 **reviewer.md** — Reviews code for bugs, security issues, and style compliance.
 ```yaml
 tools: Glob, Grep, LS, Read, WebFetch, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: red
 reasoning: true
 tags: [review, quality, read-only]
@@ -227,7 +227,7 @@ tags: [review, quality, read-only]
 **security.md** — Vulnerability analysis, OWASP Top 10, auth and input validation review.
 ```yaml
 tools: Glob, Grep, LS, Read, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 reasoning: true
 tags: [security, audit, vulnerabilities, read-only]
 ```
@@ -235,14 +235,14 @@ tags: [security, audit, vulnerabilities, read-only]
 **qa.md** — Test generation, test quality review, and coverage gap analysis.
 ```yaml
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 tags: [testing, qa, coverage]
 ```
 
 **debugger.md** — Bug diagnosis, stack trace analysis, root cause finding.
 ```yaml
 tools: Read, Edit, Bash, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 reasoning: true
 tags: [debugging, diagnostics, bug-fix]
 ```
@@ -250,14 +250,29 @@ tags: [debugging, diagnostics, bug-fix]
 **git.md** — Version control: commits, branches, PRs, diffs.
 ```yaml
 tools: Bash, Read, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 tags: [git, github, version-control]
 ```
 
 **conversational.md** — General Q&A and explanations, no tools.
 ```yaml
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 tags: [chat, explain, no-tools]
+```
+
+**diagnostician.md** — System diagnostics and issue diagnosis.
+```yaml
+tools: Read, Bash, Glob, Grep
+model: MiniMax-M2.7
+reasoning: true
+tags: [diagnostics, system, troubleshooting]
+```
+
+**docs.md** — Documentation writing and updates.
+```yaml
+tools: Read, Write, Edit, Glob, Grep
+model: MiniMax-M2.7
+tags: [documentation, writing, docs]
 ```
 
 ---
@@ -441,7 +456,7 @@ orchestration:
 name: editor
 description: Creates and modifies code files with minimal focused changes. Can spawn sub-teams for exploration or review when the task requires it.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: blue
 
 # Ember extensions
@@ -532,7 +547,7 @@ No built-in agent knows Terraform. The Orchestrator generates:
 name: terraform-migrator
 description: Migrates Terraform configurations from AWS provider v4 to v5, handling breaking changes and deprecated resources
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: orange
 
 tags: [terraform, infrastructure, migration]
@@ -716,7 +731,7 @@ Drop a `.md` file in any agents directory. That's it — it joins the pool immed
 name: docker
 description: Manages Docker containers, images, and docker-compose configurations
 tools: Bash, Read, Glob
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: blue
 ---
 
@@ -735,7 +750,7 @@ This file works in both Claude Code and Ember Code. In Ember Code, the Orchestra
 name: database
 description: Database operations including queries, migrations, schema design, and optimization. Connects to the project database via MCP.
 tools: Read, Write, Grep, Glob, LS
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: green
 
 # Ember extensions
@@ -765,7 +780,7 @@ Use the format: `YYYYMMDD_HHMMSS_description.sql` (or framework equivalent)
 name: security-auditor
 description: Security-focused code review that checks for OWASP Top 10 vulnerabilities, dependency issues, and security anti-patterns with confidence-based scoring
 tools: Glob, Grep, LS, Read, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: red
 
 # Ember extensions
@@ -851,7 +866,7 @@ Skills are reusable prompted workflows — task recipes invoked via `/skill-name
 ```
 /deploy staging              — invoke the deploy skill
 /review-pr 123               — invoke the PR review skill
-/explain src/auth/           — deep-dive explanation using VectorBridge
+/explain src/auth/           — deep-dive explanation using CodeIndex
 ```
 
 Skills use the same `SKILL.md` format as Claude Code — drop Claude Code skills into `.ember/skills/` and they work immediately.

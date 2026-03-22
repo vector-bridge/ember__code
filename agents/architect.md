@@ -2,7 +2,7 @@
 name: architect
 description: Designs feature architectures and provides implementation blueprints with component designs, data flows, and build sequences.
 tools: Glob, Grep, LS, Read, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: cyan
 
 reasoning: true

@@ -123,6 +123,15 @@ EMBER_MD_TEMPLATE = """\
 """
 
 
+CONFIG_YAML_HEADER = """\
+# Ember Code — user configuration
+# This file lives at ~/.ember/config.yaml and is never committed to git.
+# Project-level overrides go in .ember/config.yaml inside your repo.
+# See https://docs.ignite-ember.sh/configuration for details.
+
+"""
+
+
 # ── Public API ────────────────────────────────────────────────────────
 
 
@@ -146,6 +155,7 @@ def initialize_project(project_dir: Path) -> bool:
     ember_dir = project_dir / ".ember"
     ember_dir.mkdir(parents=True, exist_ok=True)
 
+    _write_default_config(home_ember)
     _copy_agents(project_dir)
     _copy_skills(project_dir)
     _provision_hooks(project_dir)
@@ -157,6 +167,19 @@ def initialize_project(project_dir: Path) -> bool:
 
 
 # ── Internal helpers ──────────────────────────────────────────────────
+
+
+def _write_default_config(home_ember: Path) -> None:
+    """Write a starter config.yaml from DEFAULT_CONFIG if one doesn't exist."""
+    config_path = home_ember / "config.yaml"
+    if not config_path.exists():
+        import yaml
+
+        from ember_code.config.defaults import DEFAULT_CONFIG
+
+        config_path.write_text(CONFIG_YAML_HEADER + yaml.dump(
+            DEFAULT_CONFIG, default_flow_style=False, sort_keys=False,
+        ))
 
 
 def _copy_agents(project_dir: Path) -> None:

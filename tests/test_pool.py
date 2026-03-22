@@ -11,7 +11,7 @@ class TestAgentParser:
         assert defn.name == "test-agent"
         assert defn.description == "A test agent"
         assert defn.tools == ["Read", "Grep"]
-        assert defn.model == "MiniMax-M2.5"
+        assert defn.model == "MiniMax-M2.7"
         assert defn.tags == ["test", "example"]
         assert defn.reasoning is True
         assert defn.reasoning_min_steps == 2

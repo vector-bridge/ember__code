@@ -69,7 +69,7 @@ Deploy the application to $ARGUMENTS environment.
 | `version` | string | Semantic version (informational) |
 | `argument-hint` | string | Hint shown in autocomplete (e.g., `[environment]`, `[file-path]`) |
 | `allowed-tools` | string | Comma-separated tool names (restricts which tools are available) |
-| `model` | string | Model override (`inherit`, `MiniMax-M2.5`, etc.) |
+| `model` | string | Model override (`inherit`, `MiniMax-M2.7`, etc.) |
 | `context` | string | `fork` = run in isolated sub-agent, default = run inline |
 | `agent` | string | When `context: fork`, which agent type to use |
 | `disable-model-invocation` | bool | If `true`, only the user can invoke (not auto-triggered) |
@@ -236,7 +236,7 @@ agent: explorer
 
 Research $ARGUMENTS thoroughly:
 1. Find all relevant files using Glob and Grep
-2. Use VectorBridge for semantic context
+2. Use CodeIndex for semantic context
 3. Read and analyze the code
 4. Summarize findings with specific file:line references
 ```
@@ -295,8 +295,9 @@ Ember Code ships with built-in skills in `<install>/skills/`:
 |---|---|
 | `/commit` | Create a well-formatted git commit with conventional message |
 | `/review-pr [number]` | Review a pull request for quality, security, and correctness |
-| `/explain [path]` | Deep-dive explanation of a file or module using VectorBridge |
+| `/explain [path]` | Deep-dive explanation of a file or module using CodeIndex |
 | `/simplify` | Review changed code for reuse, quality, and efficiency |
+| `/update-docs` | Update documentation to reflect code changes |
 | `/onboard` | Run the full onboarding flow |
 | `/propose-agents` | Propose project-specific agents based on current project |
 | `/evals run` | Run agent evaluations |
@@ -307,14 +308,14 @@ Override any built-in skill by creating a skill with the same name in `.ember/sk
 
 ## Examples
 
-### PR Review with VectorBridge
+### PR Review with CodeIndex
 
 ```markdown
 ---
 name: review-pr
 description: This skill should be used when the user asks to "review a PR", "review pull request", "check this PR", or mentions PR numbers. Performs comprehensive code review with security and performance analysis.
 argument-hint: [pr-number]
-allowed-tools: Read, Grep, Glob, Bash, VectorBridge
+allowed-tools: Read, Grep, Glob, Bash, CodeIndex
 ---
 
 Review pull request $1.
@@ -324,11 +325,11 @@ Review pull request $1.
 2. Read the PR description: `gh pr view $1`
 3. For each changed file:
    a. Read the full file for context
-   b. Search VectorBridge for the security and architecture category summaries
+   b. Search CodeIndex for the security and architecture category summaries
    c. Identify potential issues
 4. Check for:
    - Bugs and logic errors
-   - Security vulnerabilities (use VectorBridge security category)
+   - Security vulnerabilities (use CodeIndex security category)
    - Performance concerns
    - Missing tests
    - Style/convention violations
@@ -349,13 +350,13 @@ For each finding:
 name: migrate-db
 description: This skill should be used when the user asks to "create a migration", "add a column", "modify the schema", "database migration", or mentions Alembic/Knex/Prisma migrations.
 argument-hint: [description]
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, VectorBridge
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, CodeIndex
 ---
 
 Create a database migration for: $ARGUMENTS
 
 ## Steps
-1. Search VectorBridge (architecture category) to understand the current schema patterns
+1. Search CodeIndex (architecture category) to understand the current schema patterns
 2. Find existing migrations to follow naming conventions
 3. Detect the migration framework (Alembic, Knex, Prisma, raw SQL)
 4. Generate the migration file following the project's conventions
@@ -375,13 +376,13 @@ Create a database migration for: $ARGUMENTS
 name: scaffold
 description: This skill should be used when the user asks to "scaffold", "create a new component", "generate boilerplate", "bootstrap a module", or wants to create a new file from a project template.
 argument-hint: [type] [name]
-allowed-tools: Read, Write, Grep, Glob, VectorBridge
+allowed-tools: Read, Write, Grep, Glob, CodeIndex
 ---
 
 Scaffold a new $1 named $2.
 
 ## Steps
-1. Search VectorBridge for existing $1 patterns in the project
+1. Search CodeIndex for existing $1 patterns in the project
 2. Find the most similar existing $1 to use as a template
 3. Create the new $1 following the project's conventions:
    - File location (match existing patterns)
@@ -441,7 +442,7 @@ Ember Code skills use the **same format** as Claude Code:
 - Same string substitutions (`$ARGUMENTS`, `$1`, `${CLAUDE_SKILL_DIR}` mapped to `${EMBER_SKILL_DIR}`)
 - Same directory scoping (`.claude/skills/` is scanned alongside `.ember/skills/`)
 
-Claude Code skills work in Ember Code out of the box. The key difference: in Ember Code, skills can leverage VectorBridge for semantic understanding and the Orchestrator distributes skill instructions across a coordinated team — not just a single agent loop.
+Claude Code skills work in Ember Code out of the box. The key difference: in Ember Code, skills can leverage CodeIndex for semantic understanding and the Orchestrator distributes skill instructions across a coordinated team — not just a single agent loop.
 
 ---
 
@@ -471,12 +472,12 @@ That's it. It's immediately available as `/my-skill`.
 name: explain
 description: Deep-dive explanation of a file or module
 argument-hint: [file-or-directory]
-allowed-tools: Read, Grep, Glob, VectorBridge
+allowed-tools: Read, Grep, Glob, CodeIndex
 ---
 
 Explain $ARGUMENTS in depth.
 
-1. Get the VectorBridge summary for $1 (all categories)
+1. Get the CodeIndex summary for $1 (all categories)
 2. Read the actual source code
 3. Trace key execution paths
 4. Explain the design decisions and trade-offs

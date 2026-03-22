@@ -2,7 +2,7 @@
 name: docs
 description: Maintains and updates project documentation — README, TODO, CHANGELOG, and docs/.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: green
 
 tags:
@@ -46,7 +46,7 @@ You are responsible for maintaining these files:
 - **SECURITY.md** — Threat model and security hardening
 - **SKILLS.md** — Reusable prompted workflows
 - **TOOLS.md** — Available toolkits and capabilities
-- **VECTORBRIDGE.md** — Semantic code intelligence engine
+- **CODEINDEX.md** — Semantic code intelligence engine
 
 ## Core Process
 
@@ -219,7 +219,7 @@ One-paragraph description of what this feature does, derived from reading the so
 - `auth` — Authentication and credentials
 - `config` — Configuration management
 - `hooks` — Pre/post tool execution hooks
-- `knowledge` — Vector store / VectorBridge integration
+- `knowledge` — Vector store / CodeIndex integration
 - `mcp` — MCP server and client
 - `memory` — Memory management
 - `prompts` — Prompt templates

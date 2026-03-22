@@ -87,7 +87,12 @@ class OrchestrateTools(Toolkit):
         Args:
             task: The subtask description.
             agent_names: Comma-separated agent names from the pool.
-            mode: Team mode — "route" or "coordinate".
+            mode: Team mode:
+                  - "coordinate" — leader delegates sequentially (default)
+                  - "route" — single best agent handles the task
+                  - "broadcast" — all agents work in parallel, leader synthesizes
+                  - "tasks" — autonomous task loop: leader decomposes into tasks,
+                    delegates, tracks progress, iterates until done
 
         Returns:
             The team's response.
@@ -116,15 +121,20 @@ class OrchestrateTools(Toolkit):
                 except KeyError as e:
                     return str(e)
 
-            if mode not in ("route", "coordinate"):
+            valid_modes = ("route", "coordinate", "broadcast", "tasks")
+            if mode not in valid_modes:
                 mode = "coordinate"
 
-            team = Team(
-                name=f"sub-team-depth-{self.current_depth + 1}",
-                mode=mode,
-                members=members,
-                markdown=True,
-            )
+            team_kwargs = {
+                "name": f"sub-team-depth-{self.current_depth + 1}",
+                "mode": mode,
+                "members": members,
+                "markdown": True,
+            }
+            if mode == "tasks":
+                team_kwargs["max_iterations"] = self.settings.orchestration.max_task_iterations
+
+            team = Team(**team_kwargs)
 
             import asyncio
 

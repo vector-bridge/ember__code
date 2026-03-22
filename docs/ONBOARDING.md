@@ -27,8 +27,8 @@ First Run Detected
            │
            ▼
 ┌─────────────────────────────────┐
-│  4. Read project context        │  ← VectorBridge cloud summaries
-│     from VectorBridge           │     + local files (README, etc.)
+│  4. Read project context        │  ← CodeIndex cloud summaries
+│     from CodeIndex              │     + local files (README, etc.)
 │                                 │     If not ready, retry next session
 └──────────┬──────────────────────┘
            │
@@ -133,9 +133,9 @@ The user can skip this step (`--skip-onboarding` or just pressing Enter).
 
 ---
 
-## Step 4: Read Project Context from VectorBridge
+## Step 4: Read Project Context from CodeIndex
 
-Ember Code connects to **VectorBridge** cloud to pull project intelligence:
+Ember Code connects to **CodeIndex** cloud to pull project intelligence:
 
 ```python
 async def fetch_project_context(project_path: str) -> ProjectContext:
@@ -162,7 +162,7 @@ async def fetch_project_context(project_path: str) -> ProjectContext:
     )
 ```
 
-**What VectorBridge provides:**
+**What CodeIndex provides:**
 - **Project summary** — what this project does, its purpose
 - **Tech stack** — languages, frameworks, databases, infrastructure
 - **Architecture** — module structure, design patterns, key abstractions
@@ -171,16 +171,16 @@ async def fetch_project_context(project_path: str) -> ProjectContext:
 - **Recent activity** — what the team has been focused on lately
 - **Known issues** — tracked bugs, tech debt, areas of concern
 
-**Fallback:** If VectorBridge is unavailable or the project isn't indexed yet, Ember Code falls back to local analysis for now:
+**Fallback:** If CodeIndex is unavailable or the project isn't indexed yet, Ember Code falls back to local analysis for now:
 - Parse `README.md`, `package.json`, `pyproject.toml`, `Cargo.toml`, etc.
 - Scan directory structure to infer architecture
 - Read `ember.md` / `CLAUDE.md` / `AGENTS.md` if they exist
 - Detect language/framework from file extensions and imports
 
-The VectorBridge fetch is marked as pending and **retried automatically at the start of the next session**. Once VectorBridge data becomes available, Ember Code merges the richer context into the existing agent pool and may suggest agent updates:
+The CodeIndex fetch is marked as pending and **retried automatically at the start of the next session**. Once CodeIndex data becomes available, Ember Code merges the richer context into the existing agent pool and may suggest agent updates:
 
 ```
-VectorBridge context is now available for this project.
+CodeIndex context is now available for this project.
 Based on the full project analysis, I suggest updating these agents:
   editor.md — add knowledge of your Alembic migration patterns
   reviewer.md — add your team's PR review checklist
@@ -188,13 +188,13 @@ Based on the full project analysis, I suggest updating these agents:
 Want me to apply these updates? [Y/n]
 ```
 
-This deferred approach means onboarding is never blocked by VectorBridge — the user can start working immediately with local context, and the experience improves once cloud analysis completes.
+This deferred approach means onboarding is never blocked by CodeIndex — the user can start working immediately with local context, and the experience improves once cloud analysis completes.
 
 ---
 
 ## Step 5: Propose Tailored Agents
 
-Using all gathered context (user profile + VectorBridge data + local analysis), the onboarding agent proposes project-specific agents:
+Using all gathered context (user profile + CodeIndex data + local analysis), the onboarding agent proposes project-specific agents:
 
 ```
 Based on your project (FastAPI + React + PostgreSQL + Redis):
@@ -307,7 +307,7 @@ Approved agents are written as `.md` files:
 name: api-developer
 description: Specializes in FastAPI endpoint development, Pydantic schemas, and OpenAPI documentation for this project
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: green
 
 # Ember extensions
@@ -342,8 +342,8 @@ You are a FastAPI API developer for this project.
 On subsequent runs, the onboarding flow is skipped. Instead:
 
 1. Agent pool loads from existing directories (including previously created agents)
-2. If VectorBridge context was pending from onboarding, retry the fetch — if now available, suggest agent updates
-3. VectorBridge context is refreshed in the background (if configured)
+2. If CodeIndex context was pending from onboarding, retry the fetch — if now available, suggest agent updates
+3. CodeIndex context is refreshed in the background (if configured)
 4. If the project has changed significantly (new frameworks, major refactors), Ember Code may suggest updating agent definitions:
 
 ```
@@ -373,9 +373,10 @@ onboarding:
   skip: false                    # Skip onboarding entirely
   auto_create_defaults: true     # Copy default agents on first run
   ask_questions: true            # Interactive Q&A step
+  # Config key is 'vectorbridge' (SDK interface unchanged)
   vectorbridge:
-    enabled: true                # Fetch context from VectorBridge
-    api_url: "https://api.vectorbridge.io"
+    enabled: true                # Fetch context from CodeIndex
+    api_url: "https://api.ignite-ember.sh"
     # api_key is read from VECTORBRIDGE_API_KEY env var
   propose_agents: true           # Generate project-specific agent proposals
   max_proposals: 5               # Max number of agents to propose
@@ -383,7 +384,7 @@ onboarding:
 
 Environment variables:
 ```
-VECTORBRIDGE_API_KEY=vb_...     # VectorBridge API key
+VECTORBRIDGE_API_KEY=vb_...     # CodeIndex API key (env var name unchanged for SDK compat)
 EMBER_SKIP_ONBOARDING=true     # Skip onboarding (CI/CD)
 ```
 
@@ -398,7 +399,7 @@ src/ember_code/
 │   ├── flow.py               # Main onboarding orchestration
 │   ├── questionnaire.py      # User Q&A step
 │   ├── proposer.py           # Agent proposal generation
-│   ├── vectorbridge.py       # VectorBridge client
+│   ├── codeindex.py          # CodeIndex client
 │   ├── local_analyzer.py     # Fallback local project analysis
 │   └── defaults.py           # Default agent file contents
 ```

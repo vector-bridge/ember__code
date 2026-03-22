@@ -28,7 +28,7 @@ pip install -e ".[dev]"
 
 **Option A: Ember Code account (zero-config)**
 
-Sign up for a free API key — all built-in models (MiniMax M2.5) work out of the box:
+Sign up for a free API key — all built-in models (MiniMax M2.7) work out of the box:
 
 ```bash
 ignite-ember /login
@@ -372,7 +372,7 @@ Create a `.md` file in `.ember/agents/`:
 name: my-agent
 description: Does a specific thing for my project
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 tags: [backend, api]
 reasoning: true
 ---

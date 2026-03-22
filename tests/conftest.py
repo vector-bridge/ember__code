@@ -20,7 +20,7 @@ def settings():
     """
     s = load_settings()
     # Ensure the default model resolves without optional provider packages
-    s.models.default = "MiniMax-M2.5"
+    s.models.default = "MiniMax-M2.7"
     return s
 
 
@@ -43,7 +43,7 @@ def sample_agent_md(tmp_path):
         "name: test-agent\n"
         "description: A test agent\n"
         "tools: Read, Grep\n"
-        "model: MiniMax-M2.5\n"
+        "model: MiniMax-M2.7\n"
         "tags: test, example\n"
         "reasoning: true\n"
         "reasoning_min_steps: 2\n"

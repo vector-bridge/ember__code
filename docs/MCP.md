@@ -332,7 +332,19 @@ Inside an Ember Code session, use `/mcp` to manage servers:
 
 ---
 
-## 3. IDE-Specific Features
+## 3. IDE Auto-Detection
+
+Ember Code automatically detects running IDEs and configures MCP integration on session start.
+
+**VS Code detection** — checks running processes, PATH CLI, `/Applications` (macOS), `/usr/bin` (Linux). Supports variants: `code`, `code-insiders`, `codium`, `cursor`. When detected, auto-writes MCP config using `npx -y vscode-mcp-server@latest` (stdio).
+
+**JetBrains detection** — checks running processes, installed applications, and config directories. Supports: IntelliJ, PyCharm, WebStorm, GoLand, Rider, CLion, PhpStorm, RubyMine, DataGrip, RustRover, Fleet. Prefers direct SSE endpoint (port 64340-64360), falls back to `npx -y @jetbrains/mcp-proxy@latest` (stdio).
+
+Auto-detected IDE configs are written to `.ember/.mcp.json` and loaded on next session start.
+
+---
+
+## 4. IDE-Specific Features
 
 ### JetBrains MCP Server
 
@@ -373,7 +385,7 @@ The extension will communicate with Ember Code via MCP, using the same `ignite-e
 
 ---
 
-## 4. Security
+## 5. Security
 
 ### MCP Server Security
 
@@ -414,7 +426,7 @@ For enterprise deployments, administrators can enforce MCP policies:
 
 ---
 
-## 5. Project Structure
+## 6. Project Structure
 
 ```
 src/ember_code/
@@ -424,5 +436,10 @@ src/ember_code/
 │   ├── client.py          # MCP client (consuming external servers)
 │   ├── tools.py           # Tool definitions exposed via MCP
 │   ├── config.py          # .mcp.json loading and env var expansion
-│   └── transport.py       # Transport layer (stdio, http, sse)
+│   ├── transport.py       # Transport layer (stdio, http, sse)
+│   ├── ide_detect.py      # Base IDE detector class
+│   ├── vscode.py          # VS Code MCP client integration
+│   ├── vscode_detect.py   # VS Code auto-detection
+│   ├── jetbrains.py       # JetBrains MCP client integration
+│   └── jetbrains_detect.py # JetBrains auto-detection
 ```

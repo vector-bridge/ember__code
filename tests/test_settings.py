@@ -70,7 +70,7 @@ class TestLoadYaml:
 class TestSettings:
     def test_default_settings(self):
         s = Settings()
-        assert s.models.default == "MiniMax-M2.5"
+        assert s.models.default == "MiniMax-M2.7"
         assert s.permissions.file_read == "allow"
         assert s.permissions.file_write == "ask"
         assert s.safety.sandbox_shell is False

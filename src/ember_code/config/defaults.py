@@ -5,9 +5,9 @@ DEFAULT_CONFIG = {
     "version_endpoint": "/v1/cli/version",
     "update_check_ttl": 86400,
     "models": {
-        "default": "MiniMax-M2.5",
+        "default": "MiniMax-M2.7",
         "registry": {
-            "MiniMax-M2.5": {
+            "MiniMax-M2.7": {
                 "provider": "openai_like",
                 "model_id": "MiniMax-Text-01",
                 "url": "https://api.ignite-ember.sh/v1",
@@ -72,6 +72,7 @@ DEFAULT_CONFIG = {
         "max_nesting_depth": 5,
         "max_total_agents": 20,
         "sub_team_timeout": 120,
+        "max_task_iterations": 10,
         "generate_ephemeral": True,
         "max_ephemeral_per_session": 5,
         "auto_cleanup": True,
@@ -119,6 +120,11 @@ DEFAULT_CONFIG = {
     "skills": {
         "cross_tool_support": False,
         "auto_trigger": True,
+    },
+    "scheduler": {
+        "poll_interval": 30,
+        "task_timeout": 300,
+        "max_concurrent": 1,
     },
     "auth": {
         "credentials_file": "~/.ember/credentials.json",

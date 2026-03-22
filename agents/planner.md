@@ -2,7 +2,7 @@
 name: planner
 description: Analyzes tasks and produces structured implementation plans. Reasons through complex problems step by step before proposing a solution.
 tools: Glob, Grep, LS, Read, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: magenta
 
 reasoning: true

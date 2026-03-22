@@ -2,7 +2,7 @@
 name: qa
 description: Generates tests, reviews test quality, and identifies coverage gaps.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: green
 
 tags:

@@ -93,6 +93,34 @@ def is_token_expired(creds: Credentials) -> bool:
         return False
 
 
+def save_model_credentials(api_key: str, url: str, model_name: str = "MiniMax-M2.7") -> None:
+    """Write model API key and URL into ~/.ember/config.yaml.
+
+    Updates the model registry entry in-place, preserving other config.
+    """
+    import yaml
+
+    config_path = Path.home() / ".ember" / "config.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    config: dict = {}
+    if config_path.exists():
+        try:
+            data = yaml.safe_load(config_path.read_text())
+            if isinstance(data, dict):
+                config = data
+        except Exception:
+            pass
+
+    registry = config.setdefault("models", {}).setdefault("registry", {})
+    model_entry = registry.setdefault(model_name, {})
+    model_entry["api_key"] = api_key
+    model_entry["url"] = url
+
+    config_path.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
+    logger.debug("Model credentials for %s saved to %s", model_name, config_path)
+
+
 def get_access_token(path: str | None = None) -> str | None:
     """Load credentials and return the token if still valid, else None."""
     creds = load_credentials(path)

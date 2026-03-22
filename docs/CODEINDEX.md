@@ -1,12 +1,12 @@
-# VectorBridge Integration
+# CodeIndex Integration
 
-VectorBridge is the semantic code intelligence engine behind Ember Code. While other tools operate on raw text (grep for patterns, read for file contents), VectorBridge gives agents **pre-processed understanding** of the entire codebase — searchable by meaning, not just keywords.
+CodeIndex is the semantic code intelligence engine behind Ember Code. While other tools operate on raw text (grep for patterns, read for file contents), CodeIndex gives agents **pre-processed understanding** of the entire codebase — searchable by meaning, not just keywords.
 
-**VectorBridge is included free with every Ember Code account.** No separate subscription, no extra API keys. When you sign up at [ignite-ember.sh](https://ignite-ember.sh), you get both the AI coding assistant and the code intelligence platform.
+**CodeIndex is included free with every Ember Code account.** No separate subscription, no extra API keys. When you sign up at [ignite-ember.sh](https://ignite-ember.sh), you get both the AI coding assistant and the code intelligence platform.
 
-## What VectorBridge Does
+## What CodeIndex Does
 
-VectorBridge is a semantic search platform built on Weaviate (vector DB), PostgreSQL (metadata), and Agno readers (intelligent chunking). Ember Code uses it as the backend for code intelligence:
+CodeIndex is a semantic search platform built on Weaviate (vector DB), PostgreSQL (metadata), and Agno readers (intelligent chunking). Ember Code uses it as the backend for code intelligence:
 
 ```
 Your Codebase
@@ -21,12 +21,12 @@ Your Codebase
 │     (code, security, testability, ...)   │
 │  4. Build hierarchy bottom-up            │
 │     function → class → file → module     │
-│  5. Index everything in VectorBridge     │
+│  5. Index everything in CodeIndex        │
 └──────────────┬───────────────────────────┘
                │
                ▼
 ┌──────────────────────────────────────────┐
-│  VectorBridge                            │
+│  CodeIndex                               │
 │                                          │
 │  Weaviate (vectors + semantic search)    │
 │  PostgreSQL (references + metadata)      │
@@ -37,7 +37,7 @@ Your Codebase
                │
                ▼
 ┌──────────────────────────────────────────┐
-│  Agents query VectorBridge               │
+│  Agents query CodeIndex                  │
 │                                          │
 │  "How does authentication work?"         │
 │  → Returns auth module summary with      │
@@ -52,7 +52,7 @@ Your Codebase
 
 It's important to understand the separation:
 
-**VectorBridge** (the platform) provides:
+**CodeIndex** (the platform) provides:
 - Semantic chunking via Agno readers (semantic, fixed-size, document-aware, agentic)
 - Vector storage and similarity search (Weaviate)
 - Hierarchical document structure (parent/child, source/derived)
@@ -64,7 +64,7 @@ It's important to understand the separation:
 - The analysis pipeline that generates multi-category summaries
 - Bottom-up hierarchical summary generation (function → class → file → module → project)
 - Category-specific analysis (security, testability, architecture, performance, maintainability)
-- The `VectorBridge` tool that agents use to query all of this
+- The `CodeIndex` tool that agents use to query all of this
 - Automatic re-indexing on code changes
 
 Together, they give agents something no other coding assistant has: **pre-computed, semantic understanding of the entire codebase, searchable by meaning.**
@@ -84,7 +84,7 @@ When Ember Code indexes a codebase, it doesn't just store raw code. For each ent
 | **Performance** | Bottlenecks, complexity, resource usage | "N+1 query in get_user_orders() — loads related items in a loop instead of a join" |
 | **Maintainability** | Code quality, readability, tech debt | "500-line function with 12 parameters — candidate for decomposition" |
 
-Each category is a separate summary stored as a tagged document in VectorBridge. This means agents can search within a specific category:
+Each category is a separate summary stored as a tagged document in CodeIndex. This means agents can search within a specific category:
 
 ```
 search("authentication", categories=["security"])
@@ -137,11 +137,11 @@ Summaries are built **bottom-up**. Children are analyzed first, then their summa
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Why this matters:** When an agent asks about the auth module, VectorBridge doesn't return raw file contents — it returns the module-level summary that already distills knowledge from every function and class inside it. The agent gets multi-resolution understanding: zoom out for architecture, zoom in for implementation.
+**Why this matters:** When an agent asks about the auth module, CodeIndex doesn't return raw file contents — it returns the module-level summary that already distills knowledge from every function and class inside it. The agent gets multi-resolution understanding: zoom out for architecture, zoom in for implementation.
 
 ### How It's Stored
 
-Each level of the hierarchy is a document in VectorBridge with parent-child relationships:
+Each level of the hierarchy is a document in CodeIndex with parent-child relationships:
 
 ```
 Document: src/auth/middleware.py
@@ -162,7 +162,7 @@ Document: src/auth/middleware.py
       └── → src/config/security.py (reads config from)
 ```
 
-VectorBridge stores the hierarchy natively:
+CodeIndex stores the hierarchy natively:
 - **Parent/child** relationships via Weaviate references (folder → files)
 - **Source/derived** relationships for summary documents (code file → its category summaries)
 - **Custom references** with tags in PostgreSQL (cross-file dependencies, imports)
@@ -174,12 +174,12 @@ VectorBridge stores the hierarchy natively:
 
 ### Semantic Search
 
-Query by meaning, not keywords. VectorBridge vectorizes all content and summaries using embedding models, then finds results by vector similarity.
+Query by meaning, not keywords. CodeIndex vectorizes all content and summaries using embedding models, then finds results by vector similarity.
 
 ```
 Agent: search("how does payment processing handle refunds")
 
-VectorBridge returns:
+CodeIndex returns:
   1. src/payments/refund.py (score: 0.93)
      Code: "Refund processor that reverses charges via the
             payment gateway. Supports partial refunds, handles
@@ -261,14 +261,15 @@ Returns:
 
 ---
 
-## The VectorBridge Tool
+## The CodeIndex Tool
 
-Agents access VectorBridge through the `VectorBridge` tool (see [Tools](TOOLS.md)):
+Agents access CodeIndex through the `CodeIndex` tool (see [Tools](TOOLS.md)):
 
 ```python
-from ember_code.tools.vectorbridge import VectorBridgeTools
+# Import path uses 'vectorbridge' (SDK interface unchanged)
+from ember_code.tools.vectorbridge import CodeIndexTools
 
-vb = VectorBridgeTools(
+codeindex = CodeIndexTools(
     api_url=config.vectorbridge.api_url,
     api_key=config.vectorbridge.api_key,
     project_id=config.project_id,
@@ -286,9 +287,9 @@ vb = VectorBridgeTools(
 | `get_category(path, category)` | Specific category summary (e.g., security analysis) |
 | `find_similar(path, limit?)` | Find entities similar to this one |
 
-### Which Agents Get VectorBridge
+### Which Agents Get CodeIndex
 
-| Agent | Has VectorBridge | Why |
+| Agent | Has CodeIndex | Why |
 |---|---|---|
 | Explorer | yes | Primary research tool for understanding code |
 | Planner | yes | Needs architectural context to design plans |
@@ -307,8 +308,8 @@ vb = VectorBridgeTools(
 |---|---|
 | First onboarding | Full codebase |
 | `git push` (if configured) | Changed files |
-| `/vectorbridge reindex` | Full codebase |
-| `/vectorbridge reindex --changed` | Files changed since last index |
+| `/codeindex reindex` | Full codebase |
+| `/codeindex reindex --changed` | Files changed since last index |
 | Background (auto-refresh) | Changed files, periodic |
 
 ### Pipeline Steps
@@ -339,7 +340,7 @@ vb = VectorBridgeTools(
    ├── Function call graph
    └── Type/class relationships
 
-5. Index in VectorBridge
+5. Index in CodeIndex
    ├── Documents → Weaviate (vectorized for semantic search)
    ├── Chunks → Weaviate (fine-grained search)
    ├── References → PostgreSQL (tagged, bidirectional)
@@ -348,7 +349,7 @@ vb = VectorBridgeTools(
 
 ### Chunking Strategies
 
-VectorBridge supports multiple chunking strategies via Agno readers:
+CodeIndex supports multiple chunking strategies via Agno readers:
 
 | Strategy | When Used | How It Works |
 |---|---|---|
@@ -362,15 +363,15 @@ VectorBridge supports multiple chunking strategies via Agno readers:
 
 ## Graceful Degradation
 
-If VectorBridge is unavailable (no account, offline, API error), Ember Code still works. The Orchestrator is aware of VectorBridge availability and adjusts:
+If CodeIndex is unavailable (no account, offline, API error), Ember Code still works. The Orchestrator is aware of CodeIndex availability and adjusts:
 
-| VectorBridge Status | Agent Behavior |
+| CodeIndex Status | Agent Behavior |
 |---|---|
-| **Available** | Agents use VectorBridge for semantic search, summaries, references |
+| **Available** | Agents use CodeIndex for semantic search, summaries, references |
 | **Unavailable** | Agents fall back to Grep, Glob, Read for code exploration |
-| **Partially indexed** | Agents use VectorBridge where available, fall back for unindexed files |
+| **Partially indexed** | Agents use CodeIndex where available, fall back for unindexed files |
 
-The experience degrades gracefully — agents are slower and less informed without VectorBridge, but they still function. The Orchestrator may add extra Explorer agents to compensate with broader file reads.
+The experience degrades gracefully — agents are slower and less informed without CodeIndex, but they still function. The Orchestrator may add extra Explorer agents to compensate with broader file reads.
 
 ---
 
@@ -378,10 +379,11 @@ The experience degrades gracefully — agents are slower and less informed witho
 
 ```yaml
 # .ember/config.yaml
+# Note: config key is 'vectorbridge' (SDK interface unchanged)
 
 vectorbridge:
   enabled: true
-  api_url: "https://api.vectorbridge.io"     # Ember Code hosted (included free)
+  api_url: "https://api.ignite-ember.sh"     # Ember Code hosted (included free)
   # api_key is inherited from EMBER_API_KEY — no separate key needed
 
   categories:                                  # Categories to generate
@@ -413,26 +415,26 @@ vectorbridge:
 
 | Variable | Purpose |
 |---|---|
-| `EMBER_API_KEY` | Authenticates with both Ember Code and VectorBridge (single key) |
-| `VECTORBRIDGE_API_URL` | Override VectorBridge API URL (for self-hosted) |
+| `EMBER_API_KEY` | Authenticates with both Ember Code and CodeIndex (single key) |
+| `VECTORBRIDGE_API_URL` | Override CodeIndex API URL (for self-hosted). Env var name unchanged for SDK compatibility |
 
 ### Slash Commands
 
 ```
-/vectorbridge status              — show indexing status
-/vectorbridge reindex             — reindex the full project
-/vectorbridge reindex --changed   — reindex only changed files
-/vectorbridge search <query>      — quick semantic search from the CLI
+/codeindex status              — show indexing status
+/codeindex reindex             — reindex the full project
+/codeindex reindex --changed   — reindex only changed files
+/codeindex search <query>      — quick semantic search from the CLI
 ```
 
 ---
 
 ## Self-Hosting (Advanced)
 
-VectorBridge is included free with Ember Code accounts. But for teams that need to keep code on-premises, VectorBridge can be self-hosted:
+CodeIndex is included free with Ember Code accounts. But for teams that need to keep code on-premises, CodeIndex can be self-hosted:
 
 ```yaml
-# docker-compose.yml (VectorBridge stack)
+# docker-compose.yml (CodeIndex stack)
 services:
   weaviate:      # Vector database
   postgres:      # Metadata & references
@@ -446,19 +448,19 @@ Point Ember Code to your self-hosted instance:
 ```yaml
 # .ember/config.yaml
 vectorbridge:
-  api_url: "https://vectorbridge.internal.yourcompany.com"
+  api_url: "https://codeindex.internal.yourcompany.com"
 ```
 
 Or via environment variable:
 ```bash
-export VECTORBRIDGE_API_URL=https://vectorbridge.internal.yourcompany.com
+export VECTORBRIDGE_API_URL=https://codeindex.internal.yourcompany.com
 ```
 
 ---
 
 ## Why Not Just Use Grep?
 
-| Question | Grep | VectorBridge |
+| Question | Grep | CodeIndex |
 |---|---|---|
 | "How does auth work?" | Finds files with "auth" in the name/content | Returns auth module summary with flow description, security analysis, and references |
 | "What's vulnerable?" | Can't answer | Returns security-category summaries flagging issues across the codebase |
@@ -467,4 +469,4 @@ export VECTORBRIDGE_API_URL=https://vectorbridge.internal.yourcompany.com
 | "Find code similar to this function" | Can't answer | Vector similarity search finds structurally similar code |
 | "What depends on this module?" | Fragile regex on imports | Returns complete reference graph with tags |
 
-Grep finds strings. VectorBridge finds meaning.
+Grep finds strings. CodeIndex finds meaning.

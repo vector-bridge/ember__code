@@ -16,7 +16,7 @@ Claude Code uses a single agent loop — powerful but monolithic. Ember Code tak
 |---|---|---|
 | Architecture | Single agent loop | Multi-agent teams (Agno) |
 | Task routing | Manual sub-agent spawning | Automatic via Coordinate/Route modes |
-| Code intelligence | Grep + file reads | VectorBridge semantic search (included free) |
+| Code intelligence | Grep + file reads | CodeIndex semantic search (included free) |
 | Knowledge base | None | ChromaDB vector store with custom embeddings |
 | Planning | Plan mode (read-only) | Agno reasoning + Tasks mode |
 | IDE integration | MCP server (stdio) | MCP server + client (Agno MCPTools) |
@@ -26,13 +26,13 @@ Claude Code uses a single agent loop — powerful but monolithic. Ember Code tak
 | Learning | None | Agno LearningMachine (user profiles, entity memory) |
 | Guardrails | None | PII detection, prompt injection, moderation |
 | HITL | Implicit | Explicit confirmation/input requirements |
-| Default model | Anthropic Claude | MiniMax M2.5 (model-agnostic, swappable) |
+| Default model | Anthropic Claude | MiniMax M2.7 (model-agnostic, swappable) |
 
 ## Quick Start
 
 ```bash
 brew install ignite-ember        # or: pip install ignite-ember
-ignite-ember /login              # sign up for hosted models (MiniMax M2.5)
+ignite-ember /login              # sign up for hosted models (MiniMax M2.7)
 ignite-ember                     # start coding
 ```
 
@@ -123,11 +123,11 @@ Agents can pause execution to request confirmation or user input before proceedi
 - [Architecture](docs/ARCHITECTURE.md) — System design and agent topology
 - [Agents](docs/AGENTS.md) — Specialized agents and their roles
 - [Skills](docs/SKILLS.md) — Reusable prompted workflows (`/deploy`, `/review-pr`, etc.)
-- [Onboarding](docs/ONBOARDING.md) — First-run setup, VectorBridge, and agent proposals
+- [Onboarding](docs/ONBOARDING.md) — First-run setup, CodeIndex, and agent proposals
 - [Tools](docs/TOOLS.md) — Available toolkits and capabilities
 - [MCP](docs/MCP.md) — IDE integration via Model Context Protocol
 - [Configuration](docs/CONFIGURATION.md) — Settings, permissions, and customization
-- [VectorBridge](docs/VECTORBRIDGE.md) — Semantic code intelligence engine
+- [CodeIndex](docs/CODEINDEX.md) — Semantic code intelligence engine
 - [Evals](docs/EVALS.md) — Agent evaluation framework and regression testing
 - [Hooks](docs/HOOKS.md) — Pre/post tool execution hooks
 - [Migration](docs/MIGRATION.md) — Coming from Claude Code or Codex

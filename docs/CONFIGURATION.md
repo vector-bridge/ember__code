@@ -7,14 +7,16 @@ Ember Code is configured through a layered system of config files, environment v
 (Highest priority first)
 
 1. **CLI flags** — `--model`, `--no-web`, `--sandbox`, etc.
-2. **Project config** — `.ember/config.yaml` (committed to repo)
-3. **Project local config** — `.ember/config.local.yaml` (gitignored)
-4. **User config** — `~/.ember/config.yaml` (global)
+2. **Project local config** — `.ember/config.local.yaml` (gitignored, personal overrides)
+3. **Project config** — `.ember/config.yaml` (committed to repo, shared with team)
+4. **User config** — `~/.ember/config.yaml` (global, generated on first run)
 5. **Defaults** — built-in sensible defaults
+
+Each level deep-merges over the previous. The `~/.ember/config.yaml` file is automatically generated from defaults on first run via `yaml.dump(DEFAULT_CONFIG)` — a single source of truth.
 
 ## Models & Authentication
 
-Ember Code needs an LLM to run. Models are resolved through a **config-driven registry** — agent `.md` files reference models by name (e.g., `model: MiniMax-M2.5`), and the registry maps that name to a provider, endpoint URL, model ID, and API key.
+Ember Code needs an LLM to run. Models are resolved through a **config-driven registry** — agent `.md` files reference models by name (e.g., `model: MiniMax-M2.7`), and the registry maps that name to a provider, endpoint URL, model ID, and API key.
 
 ### Model Registry
 
@@ -27,13 +29,13 @@ The registry has two layers:
 # Built-in registry (hardcoded in defaults.py, shown here for reference)
 models:
   registry:
-    MiniMax-M2.5:
+    MiniMax-M2.7:
       provider: openai_like
       model_id: MiniMax-Text-01
       url: https://api.ignite-ember.sh/v1    # Ember hosted endpoint
       api_key_env: EMBER_API_KEY
 
-    MiniMax-M2.5-highspeed:
+    MiniMax-M2.7-highspeed:
       provider: openai_like
       model_id: MiniMax-Text-01-highspeed
       url: https://api.ignite-ember.sh/v1
@@ -43,7 +45,7 @@ models:
 Agent `.md` files just reference the registry name:
 
 ```yaml
-model: MiniMax-M2.5           # → looks up "MiniMax-M2.5" in the registry
+model: MiniMax-M2.7           # → looks up "MiniMax-M2.7" in the registry
 ```
 
 ### Resolution Order
@@ -59,15 +61,17 @@ When an agent references `model: <name>`:
 
 ### Option 1: Ember Code Account (default, zero-config)
 
-Sign up at **https://ignite-ember.sh** and get an API key. All built-in models route through the Ember hosted endpoint. Free tier available.
+Sign up at **https://ignite-ember.sh**. All built-in models route through the Ember hosted endpoint. Free tier available.
 
 ```bash
-ignite-ember /login         # interactive login
+ignite-ember /login         # opens browser for device-flow login
 # or
 export EMBER_API_KEY=ek_...
 ```
 
-No model configuration needed — the built-in registry handles everything.
+**Device-flow login:** Running `/login` opens your browser to the Ember portal. After you authenticate, the CLI automatically receives your access token and model credentials. Platform credentials are saved to `~/.ember/credentials.json` (token, email, expiry). Model credentials (API key, URL) are saved to `~/.ember/config.yaml`.
+
+No manual model configuration needed — the built-in registry handles everything.
 
 ### Option 2: Bring Your Own Model (BYOM)
 
@@ -125,7 +129,7 @@ Claude Code uses a simple alias map (`"sonnet"` → `"claude-sonnet-4-6"`) becau
 | Aspect | Claude Code | Ember Code |
 |---|---|---|
 | Model resolution | Alias map (string → string) | Config-driven registry (name → provider + URL + key) |
-| First-party API | `ANTHROPIC_API_KEY` | `EMBER_API_KEY` (Ember hosted MiniMax M2.5) |
+| First-party API | `ANTHROPIC_API_KEY` | `EMBER_API_KEY` (Ember hosted MiniMax M2.7) |
 | Hosted endpoint | `api.anthropic.com` | `api.ignite-ember.sh` |
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK` | BYOM registry entry with Bedrock URL |
 | Google Vertex | `CLAUDE_CODE_USE_VERTEX` | BYOM registry entry with Vertex URL |
@@ -149,15 +153,15 @@ The key difference: Claude Code only supports Anthropic models through different
 #   2. Ember Code hosted models (requires Ember Code account)
 #
 # If no custom model is configured, Ember Code uses its own hosted
-# MiniMax M2.5 endpoint. You need an Ember Code account for this.
+# MiniMax M2.7 endpoint. You need an Ember Code account for this.
 # Sign up at https://ignite-ember.sh (free tier available).
 
 models:
-  default: "MiniMax-M2.5"             # Default model for most agents
-  fast: "MiniMax-M2.5-highspeed"      # Fast model (~100 TPS, 2x cost)
+  default: "MiniMax-M2.7"             # Default model for most agents
+  fast: "MiniMax-M2.7-highspeed"      # Fast model (~100 TPS, 2x cost)
 
   # Model registry: maps model names (used in agent .md files) to providers.
-  # Built-in entries (MiniMax-M2.5, MiniMax-M2.5-highspeed) route through
+  # Built-in entries (MiniMax-M2.7, MiniMax-M2.7-highspeed) route through
   # the Ember hosted endpoint and are always available.
   # Add entries here to override built-ins or register new models.
   registry:
@@ -270,6 +274,13 @@ orchestration:
   max_nesting_depth: 5             # Max recursive sub-team depth
   max_total_agents: 20             # Max agents per request
   sub_team_timeout: 120            # Seconds before sub-team times out
+  max_task_iterations: 10          # Max iterations for tasks-mode teams
+
+# Task scheduling (background jobs)
+scheduler:
+  poll_interval: 30                # Seconds between checking for due tasks
+  task_timeout: 300                # Max seconds per scheduled task (5 min)
+  max_concurrent: 1                # Max tasks running at once (bounded by semaphore)
 
 # Agents & Skills
 # By default, only Ember Code directories are scanned.
@@ -373,12 +384,12 @@ display:
 | `OPENAI_API_KEY` | OpenAI API key (BYOM) | - |
 | `ANTHROPIC_API_KEY` | Anthropic API key (BYOM) | - |
 | `OPENROUTER_API_KEY` | OpenRouter API key (BYOM) | - |
-| `EMBER_MODEL` | Override default model | `MiniMax-M2.5` |
+| `EMBER_MODEL` | Override default model | `MiniMax-M2.7` |
 | `EMBER_CONFIG` | Path to config file | auto-discovered |
 | `EMBER_SANDBOX` | Enable shell sandboxing | `false` |
 | `EMBER_LOG_LEVEL` | Logging verbosity | `warning` |
 | `EMBER_NO_MEMORY` | Disable persistent memory | `false` |
-| `VECTORBRIDGE_API_KEY` | VectorBridge cloud API key | - |
+| `VECTORBRIDGE_API_KEY` | CodeIndex cloud API key (env var name unchanged for SDK compat) | - |
 | `EMBER_SKIP_ONBOARDING` | Skip first-run onboarding | `false` |
 | `CHROMADB_PATH` | Override ChromaDB storage path | `~/.ember/chromadb` |
 
@@ -386,8 +397,8 @@ display:
 
 ```bash
 # Model selection
-ignite-ember --model MiniMax-M2.5
-ignite-ember --model MiniMax-M2.5-highspeed  # faster variant
+ignite-ember --model MiniMax-M2.7
+ignite-ember --model MiniMax-M2.7-highspeed  # faster variant
 ignite-ember --model gpt-4o                  # use OpenAI
 
 # Safety modes
@@ -466,7 +477,7 @@ Drop Python files in `.ember/agents/` to add project-specific agents:
 name: deploy
 description: Handles deployment to staging and production environments
 tools: Bash, Read, Glob
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: cyan
 
 tags: [deploy, infrastructure, devops]
@@ -480,7 +491,7 @@ You handle deployment operations.
 - Show the deployment plan before executing
 ```
 
-Custom agents are auto-discovered and added to the agent pool. The `model: MiniMax-M2.5` field is resolved through the model registry — no hardcoded provider classes needed.
+Custom agents are auto-discovered and added to the agent pool. The `model: MiniMax-M2.7` field is resolved through the model registry — no hardcoded provider classes needed.
 
 ## Custom Tools
 

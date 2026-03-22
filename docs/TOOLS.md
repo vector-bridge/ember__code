@@ -18,56 +18,26 @@ Ember Code uses the **same tool names as Claude Code**. Each name maps to an Agn
 | `WebSearch` | `DuckDuckGoTools` or `TavilyTools` | Web search |
 | `WebFetch` | `WebTools` (custom) | Fetch and extract URL content |
 | `Orchestrate` | `OrchestrateTools` (custom) | Spawn sub-teams from agent pool |
-| `VectorBridge` | `VectorBridgeTools` (custom) | Semantic search over pre-processed code intelligence |
+| `Schedule` | `ScheduleTools` (custom) | Schedule tasks for later or recurring execution |
+| `CodeIndex` | `CodeIndexTools` (custom) | Semantic search over pre-processed code intelligence |
 | `Python` | `PythonTools` | Execute Python code |
 
 ---
 
-## VectorBridge — Semantic Code Intelligence
+## CodeIndex — Semantic Code Intelligence
 
-VectorBridge is the most important tool in Ember Code's arsenal. While other tools operate on raw text (grep for patterns, read for contents), VectorBridge provides **pre-processed, semantic understanding** of the entire codebase.
+CodeIndex is the most important tool in Ember Code's arsenal. While other tools operate on raw text (grep for patterns, read for contents), CodeIndex provides **pre-processed, semantic understanding** of the entire codebase.
+
+See [CodeIndex](CODEINDEX.md) for the full documentation on categories, hierarchical summaries, indexing pipeline, and self-hosting.
 
 ### What It Does
 
-VectorBridge pre-analyzes every entity in the codebase (files, classes, functions, modules, packages) and generates rich summaries across **multiple categories**:
+CodeIndex pre-analyzes every entity in the codebase (files, classes, functions, modules, packages) and generates rich summaries across **six categories**: Code, Security, Testability, Architecture, Performance, and Maintainability.
 
-| Category | What It Captures |
-|---|---|
-| **Code** | Purpose, behavior, algorithm, data flow |
-| **Security** | Vulnerabilities, auth patterns, input validation, secrets handling |
-| **Testability** | Test coverage, mockability, edge cases, testing patterns |
-| **Architecture** | Dependencies, coupling, design patterns, module boundaries |
-| **Performance** | Bottlenecks, complexity, resource usage, optimization opportunities |
-| **Maintainability** | Code quality, readability, tech debt, documentation |
+Summaries are built **bottom-up** (function → class → file → module → project), giving agents multi-resolution understanding.
 
-### Hierarchical Summaries
+### Functions
 
-Summaries are built **bottom-up**: children are summarized first, then their summaries are fed into the parent's summary generation. This means:
-
-```
-function summary  →  feeds into  →  class summary
-class summary     →  feeds into  →  file summary
-file summary      →  feeds into  →  module/package summary
-module summary    →  feeds into  →  project summary
-```
-
-A module-level summary doesn't just describe the module — it already contains condensed knowledge about every function and class inside it. This gives the AI **multi-resolution understanding**: zoom out for architecture, zoom in for implementation details.
-
-### Semantic Search
-
-Instead of keyword matching, VectorBridge finds code by **meaning**:
-
-```python
-from ember_code.tools.vectorbridge import VectorBridgeTools
-
-vb = VectorBridgeTools(
-    api_url=config.vectorbridge.api_url,
-    api_key=config.vectorbridge.api_key,
-    project_id=config.project_id,
-)
-```
-
-**Functions:**
 - `search(query, categories?, entity_types?, limit?)` — semantic search across summaries
 - `get_entity(path)` — get full summary for a specific entity (file, class, function)
 - `get_children(path)` — get summaries of all children of an entity
@@ -76,64 +46,22 @@ vb = VectorBridgeTools(
 
 ### Why This Matters
 
-Traditional code search is syntactic — `grep "authenticate"` finds the string, not the concept. VectorBridge is semantic:
+Traditional code search is syntactic — `grep "authenticate"` finds the string, not the concept. CodeIndex is semantic:
 
-| Query | Grep | VectorBridge |
+| Query | Grep | CodeIndex |
 |---|---|---|
 | "how does auth work?" | Finds files with "auth" in the name/content | Returns the auth module summary with flow description, security analysis, and references to all related files |
 | "what's vulnerable?" | Can't answer this | Returns security-category summaries flagging issues across the codebase |
 | "where should I add rate limiting?" | Can't answer this | Returns architecture summaries of request-handling modules with dependency analysis |
 | "what needs more tests?" | Can't answer this | Returns testability-category summaries ranking under-tested areas |
 
-### Example: Search Results
-
-```
-> search("authentication flow", categories=["code", "security"])
-
-Results:
-1. src/auth/middleware.py (score: 0.94)
-   Code: "JWT-based authentication middleware. Validates tokens from
-         the Authorization header, checks expiry and signature against
-         the JWKS endpoint, and populates request.user. Falls back to
-         session cookies for browser clients."
-   Security: "Token validation is solid but refresh token rotation is
-             not implemented — stolen refresh tokens have unlimited
-             lifetime. The JWKS cache has no TTL, which could delay
-             key rotation propagation."
-   References: → src/auth/jwt.py, src/auth/sessions.py, src/api/deps.py
-
-2. src/auth/jwt.py (score: 0.91)
-   Code: "JWT token creation and validation. Uses RS256 with keys from
-         the JWKS endpoint. Token payload includes user_id, roles, and
-         expiry. Helper functions for extracting claims."
-   Security: "RS256 is appropriate. However, the 'none' algorithm is
-             not explicitly rejected in the validation function —
-             verify this is handled by the JWT library."
-   References: → src/auth/middleware.py, src/config/security.py
-```
-
 ### Configuration
 
-```yaml
-# .ember/config.yaml
-vectorbridge:
-  enabled: true
-  api_url: "https://api.vectorbridge.io"
-  # api_key is read from VECTORBRIDGE_API_KEY env var
-  categories:                          # Categories to index
-    - code
-    - security
-    - testability
-    - architecture
-    - performance
-    - maintainability
-  auto_refresh: true                   # Re-index on significant changes
-  refresh_on_git_push: true            # Trigger re-index after push
-```
+See [CodeIndex configuration](CODEINDEX.md#configuration) for full details. Config keys and env vars use the `vectorbridge` prefix (SDK interface unchanged).
 
 ### Fallback: Local Mode
 
-If VectorBridge cloud is unavailable, Ember Code falls back to local tools (Grep, Glob, Read). The experience degrades gracefully — agents still work, just without semantic understanding. The Orchestrator is aware of VectorBridge availability and adjusts its team plans accordingly (e.g., adding more Explorer agents to compensate with broader file reads).
+If CodeIndex cloud is unavailable, Ember Code falls back to local tools (Grep, Glob, Read). The experience degrades gracefully — agents still work, just without semantic understanding.
 
 ---
 
@@ -295,7 +223,7 @@ Git operations are handled via `ShellTools` with git/gh commands. The Git Agent 
 
 ### Knowledge (KnowledgeManager)
 
-Built-in vector knowledge base powered by ChromaDB and the Ember embeddings API. Unlike VectorBridge (which provides pre-processed semantic code intelligence), the Knowledge system is a general-purpose document store that users can populate with any content.
+Built-in vector knowledge base powered by ChromaDB and the Ember embeddings API. Unlike CodeIndex (which provides pre-processed semantic code intelligence), the Knowledge system is a general-purpose document store that users can populate with any content.
 
 ```yaml
 knowledge:
@@ -317,6 +245,33 @@ knowledge:
 **Data models (Pydantic):** `KnowledgeAddResult`, `KnowledgeSearchResponse`, `KnowledgeFilter`, `KnowledgeStatus`
 
 **Requires:** `pip install ember-code[knowledge]` (installs `chromadb`)
+
+---
+
+## Task Scheduling
+
+### Schedule (ScheduleTools)
+
+Enables agents to schedule tasks for later or recurring execution. All agents with tools automatically get scheduling capabilities.
+
+**Functions:**
+- `schedule_task(description, when)` — schedule a task for later execution
+- `list_scheduled_tasks(include_done?)` — check scheduled tasks and their status
+- `cancel_scheduled_task(task_id)` — cancel a pending or recurring task
+
+**Time formats:**
+- One-shot: `"in 30 minutes"`, `"at 5pm"`, `"tomorrow"`, `"2026-12-25 14:00"`
+- Recurring: `"daily"`, `"daily at 9am"`, `"hourly"`, `"every 2 hours"`, `"weekly"`
+
+**Configuration:**
+```yaml
+scheduler:
+  poll_interval: 30       # seconds between checking for due tasks
+  task_timeout: 300       # max seconds per task (5 min default)
+  max_concurrent: 1       # bounded concurrency (sequential by default)
+```
+
+Scheduled tasks run in the background via `SchedulerRunner` with bounded concurrency (`asyncio.Semaphore`) and per-task timeout (`asyncio.wait_for`). Toast notifications appear in the TUI when tasks complete or fail.
 
 ---
 

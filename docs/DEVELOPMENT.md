@@ -15,7 +15,7 @@ ember-code/
 │   ├── TOOLS.md
 │   ├── MCP.md
 │   ├── CONFIGURATION.md
-│   ├── VECTORBRIDGE.md
+│   ├── CODEINDEX.md
 │   ├── EVALS.md
 │   ├── HOOKS.md
 │   ├── MIGRATION.md
@@ -32,26 +32,38 @@ ember-code/
 │   ├── qa.md
 │   ├── debugger.md
 │   ├── git.md
-│   └── conversational.md
+│   ├── conversational.md
+│   ├── diagnostician.md
+│   └── docs.md
 ├── skills/                            # Built-in skills (SKILL.md)
 │   ├── commit/SKILL.md
 │   ├── review-pr/SKILL.md
 │   ├── explain/SKILL.md
-│   └── simplify/SKILL.md
+│   ├── simplify/SKILL.md
+│   └── update-docs/SKILL.md
 ├── src/
 │   └── ember_code/
 │       ├── __init__.py                # Package root, version string
 │       ├── __main__.py                # Entry point (ignite-ember)
 │       ├── cli.py                     # Click CLI (flags, subcommands, pipe mode)
+│       ├── init.py                    # First-run initialization (config, agents, skills)
+│       ├── engine.py                  # Execution engine: message → response pipeline
+│       ├── events.py                  # Event dataclasses for TUI/engine communication
+│       ├── queue_hook.py              # Queue hook for Agno event streaming
 │       ├── session/
 │       │   ├── __init__.py            # Re-exports Session, run_session_interactive
-│       │   ├── core.py                # Session class: subsystem wiring, message handling
+│       │   ├── core.py                # Session class: subsystem wiring, main team building
 │       │   ├── commands.py            # Slash command dispatch
 │       │   ├── interactive.py         # Interactive REPL loop
 │       │   ├── runner.py              # Single-message execution
 │       │   ├── persistence.py         # Session listing, naming, history
 │       │   ├── memory_ops.py          # Memory retrieval and optimization
-│       │   └── knowledge_ops.py       # Knowledge add/search/sync
+│       │   ├── knowledge_ops.py       # Knowledge add/search/sync
+│       │   └── ide_context.py         # IDE context enrichment
+│       ├── auth/
+│       │   ├── __init__.py
+│       │   ├── client.py              # Device-flow authentication (browser login + polling)
+│       │   └── credentials.py         # Credential storage (~/.ember/credentials.json + config)
 │       ├── orchestrator.py            # Orchestrator: task analysis → TeamPlan
 │       ├── pool.py                    # AgentPool: load/parse .md agent definitions
 │       ├── team_builder.py            # Build Agno Teams/Agents from TeamPlan
@@ -60,10 +72,13 @@ ember-code/
 │       ├── config/
 │       │   ├── __init__.py
 │       │   ├── settings.py            # Settings (Pydantic), KnowledgeConfig,
-│       │   │                          # LearningConfig, ReasoningConfig, GuardrailsConfig
+│       │   │                          # LearningConfig, ReasoningConfig, GuardrailsConfig,
+│       │   │                          # SchedulerConfig
 │       │   ├── models.py              # ModelRegistry, BYOM resolution
+│       │   ├── api_keys.py            # API key resolution (direct, env, cmd)
 │       │   ├── permissions.py         # PermissionGuard, allowlists
-│       │   └── defaults.py            # Default configuration values
+│       │   ├── tool_permissions.py    # Tool-level permission mapping
+│       │   └── defaults.py            # Default configuration values (single source of truth)
 │       ├── tools/
 │       │   ├── __init__.py
 │       │   ├── registry.py            # Tool name → Agno toolkit mapping
@@ -99,24 +114,45 @@ ember-code/
 │       │   ├── client.py              # MCP client (consume external servers)
 │       │   ├── tools.py               # MCP → Agno tool integration
 │       │   ├── config.py              # .mcp.json loading
-│       │   └── transport.py           # Transport layer (stdio, HTTP)
+│       │   ├── transport.py           # Transport layer (stdio, HTTP)
+│       │   ├── ide_detect.py          # Base IDE detector class
+│       │   ├── vscode.py              # VS Code MCP client integration
+│       │   ├── vscode_detect.py       # VS Code auto-detection
+│       │   ├── jetbrains.py           # JetBrains MCP client integration
+│       │   └── jetbrains_detect.py    # JetBrains auto-detection
 │       ├── tui/
 │       │   ├── __init__.py            # Exports EmberApp
-│       │   ├── app.py                 # EmberApp — thin Textual shell
+│       │   ├── app.py                 # EmberApp — thin Textual shell, scheduler integration
 │       │   ├── conversation_view.py   # ConversationView — widget append/clear
-│       │   ├── execution_manager.py   # ExecutionManager — planning, streaming, cancel
+│       │   ├── run_controller.py      # RunController — execution pipeline, streaming, cancel
 │       │   ├── status_tracker.py      # StatusTracker — tokens, context, status bar
 │       │   ├── hitl_handler.py        # HITLHandler — confirmation/input dialogs
 │       │   ├── session_manager.py     # SessionManager — session picker, switching
 │       │   ├── command_handler.py     # CommandHandler — slash command dispatch
 │       │   ├── input_handler.py       # InputHandler — history, autocomplete
-│       │   ├── stream_handler.py      # StreamHandler — Agno events → widgets
-│       │   └── widgets.py             # Custom Textual widgets
+│       │   └── widgets/               # Custom Textual widgets
+│       │       ├── __init__.py
+│       │       ├── _chrome.py         # StatusBar, SpinnerWidget, QueuePanel, TipBar, etc.
+│       │       ├── _constants.py      # Spinner frames, visual constants
+│       │       ├── _dialogs.py        # LoginWidget, PermissionDialog, SessionPicker, ModelPicker
+│       │       ├── _input.py          # PromptInput, InputHistory
+│       │       ├── _messages.py       # MessageWidget, ToolCallWidget, AgentTreeWidget, etc.
+│       │       ├── _tokens.py         # TokenBadge, RunStatsWidget
+│       │       ├── _tasks.py          # TaskPanel
+│       │       ├── _task_progress.py  # TaskProgressWidget — live task visualization
+│       │       ├── _activity.py       # AgentActivityWidget
+│       │       └── _formatting.py     # Rich formatting utilities
+│       ├── scheduler/
+│       │   ├── __init__.py
+│       │   ├── runner.py              # SchedulerRunner — bounded concurrency, timeout
+│       │   ├── parser.py              # Time expression parsing (in 30m, daily, etc.)
+│       │   └── store.py               # Task store (SQLite-backed)
 │       └── utils/
 │           ├── __init__.py
 │           ├── context.py             # Project context loading (ember.md)
 │           ├── display.py             # Rich terminal formatting
 │           ├── audit.py               # Audit logging (JSON lines)
+│           ├── response.py            # Response formatting utilities
 │           ├── tips.py                # Contextual tips: analyze config/project state,
 │           │                          # suggest features not yet enabled
 │           └── update_checker.py      # Check for newer ignite-ember versions
@@ -259,7 +295,7 @@ The `apply_to_agent()` and `apply_to_team()` methods wire all features consisten
 
 ### 4. Knowledge System (knowledge/)
 
-The knowledge system uses a custom `EmberEmbedder` that calls the Ember server's `/v1/embeddings` endpoint (proxying to VectorBridge's text2vec-transformers model, 384 dimensions):
+The knowledge system uses a custom `EmberEmbedder` that calls the Ember server's `/v1/embeddings` endpoint (proxying to CodeIndex's text2vec-transformers model, 384 dimensions):
 
 ```python
 class EmberEmbedder(Embedder):
@@ -276,15 +312,14 @@ The TUI follows a clean separation of concerns:
 
 | Class | File | Responsibility |
 |---|---|---|
-| `EmberApp` | `app.py` | Textual shell: compose, mount, keybindings, event routing |
+| `EmberApp` | `app.py` | Textual shell: compose, mount, keybindings, event routing, scheduler |
 | `ConversationView` | `conversation_view.py` | Widget append/clear operations |
-| `ExecutionManager` | `execution_manager.py` | Planning, streaming, cancellation |
+| `RunController` | `run_controller.py` | Execution pipeline, streaming, cancellation, task visualization |
 | `StatusTracker` | `status_tracker.py` | Token/context tracking, status bar |
 | `HITLHandler` | `hitl_handler.py` | Confirmation dialogs, user input |
 | `SessionManager` | `session_manager.py` | Session picker, switching, clearing |
 | `CommandHandler` | `command_handler.py` | Slash command dispatch |
 | `InputHandler` | `input_handler.py` | History, autocomplete |
-| `StreamHandler` | `stream_handler.py` | Agno streaming events → widgets |
 
 ### 6. Model Resolver (config/models.py)
 
@@ -320,7 +355,7 @@ make test            # verify tests still pass
 - **Integration tests** — Orchestrator decisions, team assembly, AgnoFeatures application
 - **Mock LLM calls** — mock model responses to test orchestration logic
 - **Agent definition tests** — validate all built-in `.md` files parse correctly
-- **418 tests** across 14 test files, all passing
+- **513 tests** across 20+ test files, all passing
 
 ## Slash Commands
 
@@ -343,6 +378,7 @@ Built-in commands available in interactive mode:
 | `/knowledge add <url\|path\|text>` | Add content to knowledge base |
 | `/knowledge search <query>` | Search the knowledge base |
 | `/sync-knowledge` | Sync knowledge between git file and vector DB |
+| `/login` | Authenticate via device-flow (opens browser) |
 | `/<skill-name> [args]` | Invoke a skill (e.g., `/commit`, `/review-pr`) |
 
 ## Architecture Decisions
@@ -388,4 +424,3 @@ See [GitHub Issues](https://github.com/ignite-ember/ember-code/issues) for the c
 - [ ] Web UI (Agno Playground integration)
 - [ ] Voice mode (speech-to-text input)
 - [ ] Multi-repo support (workspaces)
-- [ ] Cron tasks (scheduled agent runs)

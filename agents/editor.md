@@ -2,7 +2,7 @@
 name: editor
 description: Creates and modifies code files. The primary coding agent for implementation, bug fixes, and refactoring.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: blue
 
 tags:

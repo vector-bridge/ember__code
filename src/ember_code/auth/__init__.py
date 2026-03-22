@@ -7,6 +7,7 @@ from ember_code.auth.credentials import (
     is_token_expired,
     load_credentials,
     save_credentials,
+    save_model_credentials,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "is_token_expired",
     "load_credentials",
     "save_credentials",
+    "save_model_credentials",
 ]

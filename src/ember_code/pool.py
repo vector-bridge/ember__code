@@ -102,7 +102,7 @@ def build_agent(
     reasoning config — and produces a ready-to-use ``Agent``.
     """
     # ── Model ──────────────────────────────────────────────────────
-    BUILTIN_DEFAULT = "MiniMax-M2.5"
+    BUILTIN_DEFAULT = "MiniMax-M2.7"
     agent_model = definition.model
     if not agent_model or agent_model == BUILTIN_DEFAULT:
         agent_model = settings.models.default

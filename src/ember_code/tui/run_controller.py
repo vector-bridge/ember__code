@@ -36,6 +36,7 @@ from ember_code.tui.widgets import (
     QueuePanel,
     SpinnerWidget,
     StreamingMessageWidget,
+    TaskProgressWidget,
     ToolCallLiveWidget,
 )
 from ember_code.tui.widgets._constants import AUTO_SCROLL_THRESHOLD
@@ -77,6 +78,7 @@ class RunController:
 
         self._stream_widget: StreamingMessageWidget | None = None
         self._spinner: AgentActivityWidget | None = None
+        self._task_progress: TaskProgressWidget | None = None
         self._processing = False
         self._current_task: asyncio.Task | None = None
         self._queue: list[str] = []
@@ -322,28 +324,40 @@ class RunController:
 
         # ── Task orchestration ──
         elif isinstance(event, TASK_CREATED_EVENTS):
-            await self._on_task_created(
-                getattr(event, "title", ""),
-                getattr(event, "assignee", ""),
-                getattr(event, "status", ""),
+            await self._ensure_task_progress()
+            self._task_progress.on_task_created(
+                task_id=getattr(event, "task_id", ""),
+                title=getattr(event, "title", ""),
+                assignee=getattr(event, "assignee", None),
+                status=getattr(event, "status", "pending"),
             )
+            self._auto_scroll()
 
         elif isinstance(event, TASK_UPDATED_EVENTS):
-            await self._on_task_updated(
-                getattr(event, "title", ""),
-                getattr(event, "status", ""),
-                getattr(event, "previous_status", ""),
-                getattr(event, "assignee", ""),
+            await self._ensure_task_progress()
+            self._task_progress.on_task_updated(
+                task_id=getattr(event, "task_id", ""),
+                status=getattr(event, "status", ""),
+                assignee=getattr(event, "assignee", None),
             )
+            self._auto_scroll()
 
         elif isinstance(event, TASK_ITERATION_EVENTS):
-            await self._on_task_iteration(
+            await self._ensure_task_progress()
+            self._task_progress.on_iteration(
                 getattr(event, "iteration", 0),
                 getattr(event, "max_iterations", 0),
             )
+            if self._spinner:
+                self._spinner.set_label(f"Iteration {getattr(event, 'iteration', 0)}")
+            self._auto_scroll()
 
         elif isinstance(event, TASK_STATE_UPDATED_EVENTS):
-            pass  # Noisy, skip
+            await self._ensure_task_progress()
+            tasks = getattr(event, "tasks", [])
+            if tasks:
+                self._task_progress.on_task_state_updated(tasks)
+                self._auto_scroll()
 
         # ── HITL pause ──
         elif isinstance(event, RUN_PAUSED_EVENTS):
@@ -505,34 +519,11 @@ class RunController:
 
     # ── Task orchestration ────────────────────────────────────────
 
-    async def _on_task_created(self, title: str, assignee: str, status: str) -> None:
-        label = f"[dim]Task: {title}[/dim]"
-        if assignee:
-            label += f" [dim]→ {assignee}[/dim]"
-        if status:
-            label += f" [dim][{status}][/dim]"
-        await self._conversation.container.mount(Static(label, classes="task-event"))
-        self._auto_scroll()
-
-    async def _on_task_updated(
-        self, title: str, status: str, previous_status: str, assignee: str
-    ) -> None:
-        transition = f"{previous_status} → {status}" if previous_status else status
-        label = f"[dim]{title}: {transition}[/dim]"
-        if assignee:
-            label += f" [dim]({assignee})[/dim]"
-        await self._conversation.container.mount(Static(label, classes="task-event"))
-        self._auto_scroll()
-
-    async def _on_task_iteration(self, iteration: int, max_iterations: int) -> None:
-        label = f"[dim]Iteration {iteration}"
-        if max_iterations:
-            label += f"/{max_iterations}"
-        label += "[/dim]"
-        await self._conversation.container.mount(Static(label, classes="task-event"))
-        self._auto_scroll()
-        if self._spinner:
-            self._spinner.set_label(f"Iteration {iteration}")
+    async def _ensure_task_progress(self) -> None:
+        """Mount the TaskProgressWidget if not already present."""
+        if self._task_progress is None:
+            self._task_progress = TaskProgressWidget()
+            await self._conversation.container.mount(self._task_progress)
 
     # ── Debug logging ────────────────────────────────────────────
 
@@ -618,6 +609,8 @@ class RunController:
             except Exception:
                 pass
             self._spinner = None
+        # Task progress widget stays visible after run completes (read-only)
+        self._task_progress = None
 
     def _cleanup_spinners(self) -> None:
         for cls in (SpinnerWidget, AgentActivityWidget):

@@ -283,13 +283,13 @@ Verify the Orchestrator's team assembly decisions. These test the meta-agent, no
 | `team_mode` | `mode` | Orchestrator chose this team mode |
 | `team_size` | `min?`, `max?`, `exact?` | Number of agents in team |
 
-### 6. VectorBridge Assertions (Ember Extension)
+### 6. CodeIndex Assertions (Ember Extension)
 
-Verify agents use VectorBridge when they should (semantic questions should use VectorBridge, not just grep).
+Verify agents use CodeIndex when they should (semantic questions should use CodeIndex, not just grep).
 
 | Type | Parameters | Description |
 |---|---|---|
-| `vb_searched` | `query_contains?` | VectorBridge search was invoked |
+| `vb_searched` | `query_contains?` | CodeIndex search was invoked |
 | `vb_categories` | `categories` (list) | Search included these categories |
 
 ---
@@ -432,7 +432,7 @@ def test_editor_response_quality(editor_agent, tmp_path):
 
     # Agno AccuracyEval with LLM judge
     accuracy = AccuracyEval(
-        model=OpenAILike(id="MiniMax-M2.5", ...),
+        model=OpenAILike(id="MiniMax-M2.7", ...),
         agent=editor_agent,
         input=f"Rename processData to process_data in {test_file}",
         expected_output="Renamed the function from processData to process_data",
@@ -457,7 +457,7 @@ Ember Code Agent Evals
     ✓ searches_with_grep              1.2s   reliability: ✓
     ✓ reads_file_contents             0.6s   accuracy: 8.8
     ✓ handles_large_codebase          2.1s   accuracy: 8.1
-    ✓ uses_vectorbridge_for_semantic   1.4s   reliability: ✓
+    ✓ uses_codeindex_for_semantic      1.4s   reliability: ✓
     ✓ doesnt_modify_files             0.9s   reliability: ✓
                                       6/6 passed
 
@@ -565,11 +565,11 @@ When a score drops from the previous run or below the baseline:
   unexpected_tool_calls: [Write, Edit, Bash]
 ```
 
-**VectorBridge is preferred for semantic questions:**
+**CodeIndex is preferred for semantic questions:**
 ```yaml
 - name: semantic_over_grep
   input: "How does the authentication flow work?"
-  expected_tool_calls: [VectorBridge]
+  expected_tool_calls: [CodeIndex]
 ```
 
 **Orchestrator picks the right mode:**
@@ -591,7 +591,7 @@ When a score drops from the previous run or below the baseline:
 # .ember/config.yaml
 
 evals:
-  judge_model: MiniMax-M2.5           # model for AccuracyEval judge
+  judge_model: MiniMax-M2.7           # model for AccuracyEval judge
   num_iterations: 3                    # default AccuracyEval iterations
   accuracy_threshold: 7                # default passing score (0-10)
   timeout_per_case: 30                 # seconds per test case

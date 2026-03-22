@@ -2,7 +2,7 @@
 name: explorer
 description: Deeply analyzes existing codebase features by tracing execution paths, mapping architecture layers, and documenting dependencies. Read-only — cannot modify files.
 tools: Glob, Grep, LS, Read, WebFetch, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: yellow
 
 tags:

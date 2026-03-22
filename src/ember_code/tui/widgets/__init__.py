@@ -26,6 +26,7 @@ from ember_code.tui.widgets._messages import (
     ToolCallLiveWidget,
     ToolCallWidget,
 )
+from ember_code.tui.widgets._task_progress import TaskProgressWidget
 from ember_code.tui.widgets._tasks import TaskPanel
 from ember_code.tui.widgets._tokens import RunStatsWidget, TokenBadge
 
@@ -48,6 +49,7 @@ __all__ = [
     "StatusBar",
     "StreamingMessageWidget",
     "TaskPanel",
+    "TaskProgressWidget",
     "TipBar",
     "TokenBadge",
     "ToolCallLiveWidget",

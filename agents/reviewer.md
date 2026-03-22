@@ -2,7 +2,7 @@
 name: reviewer
 description: Reviews code for bugs, security issues, performance problems, and style violations.
 tools: Glob, Grep, LS, Read, WebFetch, WebSearch
-model: MiniMax-M2.5
+model: MiniMax-M2.7
 color: red
 
 reasoning: true

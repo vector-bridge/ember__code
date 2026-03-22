@@ -10,7 +10,7 @@ from ember_code.config.defaults import DEFAULT_CONFIG
 
 
 class ModelsConfig(BaseModel):
-    default: str = "MiniMax-M2.5"
+    default: str = "MiniMax-M2.7"
     registry: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
@@ -82,6 +82,7 @@ class OrchestrationConfig(BaseModel):
     max_nesting_depth: int = 5
     max_total_agents: int = 20
     sub_team_timeout: int = 120
+    max_task_iterations: int = 10
     generate_ephemeral: bool = True
     max_ephemeral_per_session: int = 5
     auto_cleanup: bool = True
@@ -141,6 +142,12 @@ class GuardrailsConfig(BaseModel):
     moderation: bool = False
 
 
+class SchedulerConfig(BaseModel):
+    poll_interval: int = 30
+    task_timeout: int = 300
+    max_concurrent: int = 1
+
+
 class AuthConfig(BaseModel):
     credentials_file: str = "~/.ember/credentials.json"
 
@@ -175,6 +182,7 @@ class Settings(BaseModel):
     guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
     skills: SkillsConfig = Field(default_factory=SkillsConfig)
+    scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
     display: DisplayConfig = Field(default_factory=DisplayConfig)
 

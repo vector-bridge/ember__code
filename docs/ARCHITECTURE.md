@@ -221,7 +221,7 @@ By default, Ember Code loads agents and skills from its own directories only. En
 
 Each Ember Code session:
 
-1. **First run?** — if `.ember/agents/` doesn't exist, run the [onboarding flow](ONBOARDING.md): create default agents, ask about the user's work, fetch project context from VectorBridge, propose tailored agents
+1. **First run?** — if `.ember/agents/` doesn't exist, run the [onboarding flow](ONBOARDING.md): create default agents, ask about the user's work, fetch project context from CodeIndex, propose tailored agents
 2. **Loads** — agent pool (from Ember/Claude/Codex directories), user memory, project context (`ember.md`), MCP servers, session history
 3. **Runs** — interactive loop: user message → Orchestrator → team/agent → response
 3. **Persists** — updated memory, session state to SQLite
@@ -304,7 +304,7 @@ Two HITL modes:
 
 ## Run Cancellation
 
-Users can cancel a running agent or team mid-execution. In the TUI, press `Escape` to cancel. The `ExecutionManager` handles cleanup of spinners, partial output, and agent state.
+Users can cancel a running agent or team mid-execution. In the TUI, press `Escape` to cancel. The `RunController` handles cleanup of spinners, partial output, and agent state.
 
 ## TUI Architecture
 
@@ -312,17 +312,34 @@ The TUI is built with [Textual](https://textual.textualize.io/) and follows a cl
 
 | Class | File | Responsibility |
 |---|---|---|
-| `EmberApp` | `app.py` | Textual shell: compose, mount, keybindings, event routing |
+| `EmberApp` | `app.py` | Textual shell: compose, mount, keybindings, event routing, scheduler |
 | `ConversationView` | `conversation_view.py` | Widget append/clear operations |
-| `ExecutionManager` | `execution_manager.py` | Planning, streaming, cancellation |
+| `RunController` | `run_controller.py` | Execution pipeline, streaming, cancellation, task visualization |
 | `StatusTracker` | `status_tracker.py` | Token/context tracking, status bar |
 | `HITLHandler` | `hitl_handler.py` | Confirmation dialogs, user input |
 | `SessionManager` | `session_manager.py` | Session picker, switching, clearing |
 | `CommandHandler` | `command_handler.py` | Slash command dispatch |
 | `InputHandler` | `input_handler.py` | History, autocomplete |
-| `StreamHandler` | `stream_handler.py` | Agno streaming events → widgets |
 
 `EmberApp` is a thin shell that delegates to focused manager classes. Textual requires `action_*` methods and `@on` decorators on the App, but the logic lives in the managers. Each manager takes an `EmberApp` reference (via `TYPE_CHECKING` to avoid circular imports) and uses `query_one()` to interact with widgets.
+
+### Task Visualization
+
+When teams run in **tasks mode**, the TUI displays a live `TaskProgressWidget` showing:
+- Task list with status icons (○ pending, ◉ in-progress, ● completed, ✗ failed, ◌ blocked)
+- Assignees, dependencies, and iteration progress
+- Summary line with done/running/failed counts
+
+The widget updates in real-time as `TaskCreatedEvent`, `TaskUpdatedEvent`, and `TaskStateUpdatedEvent` stream in from Agno.
+
+### Background Task Scheduling
+
+`EmberApp` runs a `SchedulerRunner` in the background that polls for due tasks. Configuration:
+- `poll_interval`: how often to check (default 30s)
+- `task_timeout`: max duration per task (default 300s)
+- `max_concurrent`: bounded concurrency via `asyncio.Semaphore` (default 1, sequential)
+
+When scheduled tasks complete, toast notifications appear via Textual's `notify()` system.
 
 ## Error Handling
 

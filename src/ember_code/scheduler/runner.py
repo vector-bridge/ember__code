@@ -1,7 +1,8 @@
 """Background scheduler runner — polls for due tasks and executes them.
 
-All task execution is spawned as separate asyncio tasks so the poll loop
-and the TUI event loop are never blocked.
+Tasks are executed with bounded concurrency via an asyncio semaphore.
+By default only one task runs at a time (sequential), but this is
+configurable. Each task has a timeout to prevent runaway executions.
 """
 
 import asyncio
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class SchedulerRunner:
-    """Polls the task store and executes due tasks via a callback.
+    """Polls the task store and executes due tasks with bounded concurrency.
 
     Parameters
     ----------
@@ -26,11 +27,17 @@ class SchedulerRunner:
         Async callback ``(task_description: str) -> str`` that runs the task
         through the AI agent and returns the result text.
     on_task_started:
-        Optional async callback when a task begins executing.
+        Optional callback when a task begins executing.
     on_task_completed:
-        Optional async callback when a task finishes (success or failure).
+        Optional callback when a task finishes (success or failure).
     poll_interval:
         Seconds between polls. Default 30.
+    task_timeout:
+        Maximum seconds a single task may run before being cancelled.
+        Default 300 (5 minutes).
+    max_concurrent:
+        Maximum number of tasks executing at the same time. Default 1
+        (sequential execution).
     """
 
     def __init__(
@@ -40,15 +47,18 @@ class SchedulerRunner:
         on_task_started: Callable[[str, str], Any] | None = None,
         on_task_completed: Callable[[str, str, bool], Any] | None = None,
         poll_interval: float = 30,
+        task_timeout: float = 300,
+        max_concurrent: int = 1,
     ):
         self._store = store
         self._execute_fn = execute_fn
         self._on_task_started = on_task_started
         self._on_task_completed = on_task_completed
         self._poll_interval = poll_interval
+        self._task_timeout = task_timeout
+        self._semaphore = asyncio.Semaphore(max(1, max_concurrent))
         self._running = False
         self._poll_task: asyncio.Task | None = None
-        # Track running task executions so they aren't garbage-collected
         self._active_tasks: set[asyncio.Task] = set()
 
     def start(self) -> None:
@@ -57,7 +67,12 @@ class SchedulerRunner:
             return
         self._running = True
         self._poll_task = asyncio.create_task(self._poll_loop())
-        logger.info("Scheduler started (poll every %.0fs)", self._poll_interval)
+        logger.info(
+            "Scheduler started (poll every %.0fs, timeout %.0fs, max concurrent %d)",
+            self._poll_interval,
+            self._task_timeout,
+            self._semaphore._value,
+        )
 
     def stop(self) -> None:
         """Stop the polling loop and cancel active task executions."""
@@ -83,23 +98,24 @@ class SchedulerRunner:
             await asyncio.sleep(self._poll_interval)
 
     async def _check_and_spawn(self) -> None:
-        """Check for due tasks and spawn each as a separate asyncio task.
-
-        This never awaits execution — each task runs concurrently in the
-        background without blocking the poll loop or the TUI.
-        """
+        """Find due tasks and spawn them, respecting the concurrency limit."""
         due_tasks = await self._store.get_due_tasks()
         for task in due_tasks:
-            # Mark as running immediately so the next poll doesn't pick it up again
+            # Mark as running so the next poll doesn't pick it up again
             await self._store.update_status(task.id, TaskStatus.running)
             logger.info("Spawning scheduled task %s: %s", task.id, task.description)
 
-            bg = asyncio.create_task(self._execute_task(task.id, task.description))
+            bg = asyncio.create_task(self._run_with_semaphore(task.id, task.description))
             self._active_tasks.add(bg)
             bg.add_done_callback(self._active_tasks.discard)
 
+    async def _run_with_semaphore(self, task_id: str, description: str) -> None:
+        """Acquire the semaphore, then execute the task."""
+        async with self._semaphore:
+            await self._execute_task(task_id, description)
+
     async def _execute_task(self, task_id: str, description: str) -> None:
-        """Execute a single task in the background.
+        """Execute a single task with a timeout.
 
         If the task has a recurrence pattern, a new pending task is created
         for the next occurrence after completion (success or failure).
@@ -108,11 +124,20 @@ class SchedulerRunner:
             self._on_task_started(task_id, description)
 
         try:
-            result = await self._execute_fn(description)
+            result = await asyncio.wait_for(
+                self._execute_fn(description),
+                timeout=self._task_timeout,
+            )
             await self._store.update_status(task_id, TaskStatus.completed, result=result)
             logger.info("Task %s completed", task_id)
             if self._on_task_completed:
                 self._on_task_completed(task_id, description, True)
+        except asyncio.TimeoutError:
+            error_msg = f"Task timed out after {self._task_timeout:.0f}s"
+            await self._store.update_status(task_id, TaskStatus.failed, error=error_msg)
+            logger.error("Task %s timed out after %.0fs", task_id, self._task_timeout)
+            if self._on_task_completed:
+                self._on_task_completed(task_id, description, False)
         except Exception as e:
             error_msg = str(e)
             await self._store.update_status(task_id, TaskStatus.failed, error=error_msg)

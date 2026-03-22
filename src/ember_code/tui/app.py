@@ -615,13 +615,16 @@ class EmberApp(App):
         from ember_code.scheduler.runner import SchedulerRunner
         from ember_code.scheduler.store import TaskStore
 
+        sched_cfg = self.settings.scheduler
         store = TaskStore()
         self._scheduler_runner = SchedulerRunner(
             store=store,
             execute_fn=self._execute_scheduled_task,
             on_task_started=self._on_scheduled_task_started,
             on_task_completed=self._on_scheduled_task_completed,
-            poll_interval=15,
+            poll_interval=sched_cfg.poll_interval,
+            task_timeout=sched_cfg.task_timeout,
+            max_concurrent=sched_cfg.max_concurrent,
         )
         self._scheduler_runner.start()
 
@@ -641,14 +644,40 @@ class EmberApp(App):
 
     def _on_scheduled_task_started(self, task_id: str, description: str) -> None:
         short = description[:50] + ("..." if len(description) > 50 else "")
-        self._conversation.append_info(f"Running scheduled task `{task_id}`: {short}")
+        self._conversation.append_info(f"⚡ Running scheduled task `{task_id}`: {short}")
+        self.notify(f"Task {task_id} started: {short}", title="Scheduler", timeout=5)
         asyncio.create_task(self._refresh_task_panel())
 
     def _on_scheduled_task_completed(self, task_id: str, description: str, success: bool) -> None:
-        status = "completed" if success else "failed"
-        self._conversation.append_info(
-            f"Scheduled task `{task_id}` {status}. Use `/schedule show {task_id}` to see results."
-        )
+        short = description[:50] + ("..." if len(description) > 50 else "")
+        if success:
+            self._conversation.append(
+                Static(
+                    f"[green]✓[/green] Task `{task_id}` completed: {short}"
+                    f"  [dim]→ /schedule show {task_id}[/dim]",
+                    classes="task-event",
+                )
+            )
+            self.notify(
+                f"Task {task_id} completed: {short}",
+                title="Scheduler",
+                severity="information",
+                timeout=8,
+            )
+        else:
+            self._conversation.append(
+                Static(
+                    f"[red]✗[/red] Task `{task_id}` failed: {short}"
+                    f"  [dim]→ /schedule show {task_id}[/dim]",
+                    classes="task-event",
+                )
+            )
+            self.notify(
+                f"Task {task_id} failed: {short}",
+                title="Scheduler",
+                severity="error",
+                timeout=10,
+            )
         asyncio.create_task(self._refresh_task_panel())
 
     async def _refresh_task_panel(self) -> None:
